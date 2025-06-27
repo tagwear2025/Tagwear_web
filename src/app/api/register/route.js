@@ -1,10 +1,10 @@
 // src/app/api/register/route.js
 import { NextResponse } from 'next/server';
+// CORRECCIÓN: Tu código usa 'firebaseAdmin', lo mantenemos.
 import { auth, db } from '@/lib/firebaseAdmin';
 
 export async function POST(request) {
   try {
-    // 1. Extraer los datos del cuerpo de la solicitud
     const {
       nombres,
       apellidos,
@@ -13,37 +13,21 @@ export async function POST(request) {
       lugarResidencia,
       email,
       password,
-      estadoCuenta, // Este valor viene del frontend como `true`
     } = await request.json();
 
-    // 2. Validación de campos en el backend (una capa extra de seguridad)
-    if (!email || !password || !nombres || !apellidos || !fechaNacimiento || !sexo || !lugarResidencia) {
-      return NextResponse.json(
-        { error: 'Todos los campos son obligatorios.' },
-        { status: 400 }
-      );
+    if (!email || !password || !nombres || !apellidos) {
+      return NextResponse.json({ error: 'Faltan campos requeridos.' }, { status: 400 });
     }
-
-    if (password.length < 6) {
-        return NextResponse.json(
-            { error: 'La contraseña debe tener al menos 6 caracteres.' },
-            { status: 400 }
-        );
-    }
-
-    // 3. Crear el usuario en Firebase Authentication
-    // El displayName combina nombres y apellidos para una mejor visualización en Firebase
+    
     const userRecord = await auth.createUser({
       email,
       password,
       displayName: `${nombres} ${apellidos}`,
     });
     
-    // 4. Establecer un rol personalizado para el usuario.
-    // Esto es más seguro y escalable que depender del email.
     await auth.setCustomUserClaims(userRecord.uid, { role: 'user' });
 
-    // 5. Crear el documento del usuario en Firestore con la estructura de datos correcta
+    // Usamos el estilo de tu código para interactuar con Firestore
     await db.collection('users').doc(userRecord.uid).set({
       nombres,
       apellidos,
@@ -51,19 +35,16 @@ export async function POST(request) {
       fechaNacimiento,
       sexo,
       lugarResidencia,
-      rol: 'user', // Asignar rol explícitamente en la base de datos
-      // ===================================================================
-      // CORRECCIÓN APLICADA: Se usa 'active' para alinear con la API de login.
-      active: estadoCuenta, 
-      // ===================================================================
+      rol: 'user',
+      // Tu campo para el estado de la cuenta. Correcto.
+      active: true, 
       createdAt: new Date().toISOString(),
-      // Puedes añadir otros campos por defecto si es necesario
-      // por ejemplo: fotoURL: 'url/a/imagen/por/defecto.png'
+      // --- NUEVOS CAMPOS AÑADIDOS ---
+      // Usamos los nombres de campos que ya existen en tu modelo de ejemplo.
+      fechaSuscripcion: null,
+      fechaVencimiento: null,
     });
 
-    console.log(`Usuario creado y activado exitosamente: ${email} con UID: ${userRecord.uid}`);
-    
-    // 6. Enviar una respuesta de éxito
     return NextResponse.json(
       { message: 'Usuario creado exitosamente.' },
       { status: 201 }
@@ -71,26 +52,9 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Error en /api/register:', error);
-
-    // 7. Manejo de errores específicos de Firebase
     if (error.code === 'auth/email-already-exists') {
-      return NextResponse.json(
-        { error: 'Este correo electrónico ya está en uso. Por favor, utiliza otro.' },
-        { status: 409 } // 409 Conflict
-      );
+      return NextResponse.json({ error: 'Este correo electrónico ya está en uso.' }, { status: 409 });
     }
-    
-    if (error.code === 'auth/invalid-email') {
-        return NextResponse.json(
-          { error: 'El formato del correo electrónico no es válido.' },
-          { status: 400 }
-        );
-    }
-
-    // Error genérico para otros casos
-    return NextResponse.json(
-      { error: 'No se pudo crear el usuario. Inténtalo más tarde.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'No se pudo crear el usuario.' }, { status: 500 });
   }
 }

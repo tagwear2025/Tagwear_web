@@ -48,7 +48,6 @@ next-env.d.ts
 # Archivo de credenciales del nuevo proyecto (ignorado por nombre específico)
 tagwear-a26ca-firebase-adminsdk-fbsvc-7d69650c8d.json
 
-# Ruta alternativa del proyecto antiguo (ignorado)
-src/lib/firebase-adminsdk.json
-
+# Ignorar credenciales de Google Cloud / Firebase
+serviceAccountKey.json
 

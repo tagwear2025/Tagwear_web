@@ -1,0 +1,154 @@
+/* src/styles/Admin/Navbar/NavbarAdmin.css */
+
+/* --- Variables de Color para el Tema Oscuro --- */
+:root {
+  --bg-primary: #111827;      /* bg-gray-900 */
+  --bg-secondary: #1f2937;    /* bg-gray-800 */
+  --border-color: #374151;   /* border-gray-700 */
+  --text-primary: #f9fafb;     /* text-gray-50 */
+  --text-secondary: #d1d5db; /* text-gray-300 */
+  --accent-color: #60a5fa;   /* text-blue-400 */
+  --danger-color: #ef4444;   /* bg-red-600 */
+  --danger-hover: #dc2626;   /* bg-red-700 */
+  --nav-height: 64px;
+}
+
+/* --- Base del Navbar --- */
+.navbar-admin {
+  background-color: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  height: var(--nav-height);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.navbar-admin__container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 1.5rem; /* px-6 */
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navbar-admin__brand {
+  font-weight: bold;
+  font-size: 1.25rem; /* text-xl */
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+/* --- Menú Hamburguesa (Visible solo en móvil) --- */
+.navbar-admin__menu-toggle {
+  display: none; /* Oculto por defecto */
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+/* --- Contenedor del Menú (Links y Botón de Salida) --- */
+.navbar-admin__menu {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem; /* gap-6 */
+}
+
+/* --- Lista de Links --- */
+.navbar-admin__links {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem; /* gap-6 */
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* =============================================================== */
+/* === INICIO DE LA CORRECCIÓN DE ESPECIFICIDAD === */
+/* =============================================================== */
+
+/* ANTES era: .navbar-admin__link */
+/* AHORA es: .navbar-admin__links a */
+/* Esto asegura que la regla se aplique a las etiquetas <a> dentro de la lista de links */
+.navbar-admin__links a {
+  color: var(--text-secondary);
+  text-decoration: none; /* <-- IMPORTANTE: Quita el subrayado */
+  padding: 0.5rem 0;
+  transition: color 0.2s ease-in-out;
+}
+
+/* ANTES era: .navbar-admin__link:hover */
+.navbar-admin__links a:hover {
+  color: var(--text-primary);
+}
+
+/* ANTES era: .navbar-admin__link.is-active */
+/* Ahora nos aseguramos que sea un link (<a>) con la clase .is-active */
+.navbar-admin__links a.is-active {
+  color: var(--accent-color);
+  font-weight: 500;
+}
+
+/* =============================================================== */
+/* === FIN DE LA CORRECCIÓN DE ESPECIFICIDAD === */
+/* =============================================================== */
+
+
+/* --- Botón de Cerrar Sesión --- */
+.navbar-admin__signout {
+  background-color: var(--danger-color);
+  color: var(--text-primary);
+  border: none;
+  border-radius: 0.375rem; /* rounded */
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.navbar-admin__signout:hover {
+  background-color: var(--danger-hover);
+}
+
+/* --- ESTILOS PARA MÓVILES (Menos de 768px) --- */
+@media (max-width: 767px) {
+  /* ... (el resto del código para móviles no necesita cambios) ... */
+  .navbar-admin__menu-toggle {
+    display: block;
+    z-index: 100;
+  }
+
+  .navbar-admin__menu {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background-color: var(--bg-primary);
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .navbar-admin__menu.is-open {
+    transform: translateX(0);
+  }
+
+  .navbar-admin__links {
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  /* También aplicamos la mayor especificidad aquí para los móviles */
+  .navbar-admin__links a {
+    font-size: 1.25rem;
+  }
+}

@@ -1,10 +1,11 @@
 // src/app/api/register/route.js
 import { NextResponse } from 'next/server';
-// CORRECCIÓN: Tu código usa 'firebaseAdmin', lo mantenemos.
-import { auth, db } from '@/lib/firebaseAdmin';
+// Usamos la importación de tu archivo original para mantener la consistencia
+import { auth as adminAuth, db as adminDb } from '@/lib/firebaseAdmin';
 
 export async function POST(request) {
   try {
+    // 1. Desestructuramos los datos como en tu API original
     const {
       nombres,
       apellidos,
@@ -13,22 +14,26 @@ export async function POST(request) {
       lugarResidencia,
       email,
       password,
+      estadoCuenta, // Este campo venía en tu formulario
     } = await request.json();
 
+    // Verificación de campos requeridos
     if (!email || !password || !nombres || !apellidos) {
       return NextResponse.json({ error: 'Faltan campos requeridos.' }, { status: 400 });
     }
     
-    const userRecord = await auth.createUser({
+    // 2. Creamos el usuario en Firebase Authentication
+    const userRecord = await adminAuth.createUser({
       email,
       password,
       displayName: `${nombres} ${apellidos}`,
     });
     
-    await auth.setCustomUserClaims(userRecord.uid, { role: 'user' });
+    // 3. Asignamos el rol como lo hacías antes
+    await adminAuth.setCustomUserClaims(userRecord.uid, { role: 'user' });
 
-    // Usamos el estilo de tu código para interactuar con Firestore
-    await db.collection('users').doc(userRecord.uid).set({
+    // 4. Creamos el documento en Firestore combinando tu estructura con el nuevo campo
+    await adminDb.collection('users').doc(userRecord.uid).set({
       nombres,
       apellidos,
       email,
@@ -36,13 +41,19 @@ export async function POST(request) {
       sexo,
       lugarResidencia,
       rol: 'user',
-      // Tu campo para el estado de la cuenta. Correcto.
-      active: true, 
+      active: estadoCuenta || true, // Usamos tu campo o un valor por defecto
       createdAt: new Date().toISOString(),
-      // --- NUEVOS CAMPOS AÑADIDOS ---
-      // Usamos los nombres de campos que ya existen en tu modelo de ejemplo.
+      
+      // --- CAMPO CLAVE AÑADIDO ---
+      // Aquí está la adición importante para la lógica de vendedor.
+      isSellerVerified: false, 
+      
+      // Campos adicionales de tu modelo original
       fechaSuscripcion: null,
       fechaVencimiento: null,
+      photoURL: null, // Inicializamos los campos de URL como nulos
+      idCardURL: null,
+      licenseURL: null,
     });
 
     return NextResponse.json(

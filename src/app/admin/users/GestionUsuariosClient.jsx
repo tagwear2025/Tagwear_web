@@ -6,10 +6,12 @@ import { fetcher } from '@/lib/fetcher';
 import Swal from 'sweetalert2';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { useRouter } from 'next/navigation'; // Importar useRouter para la navegación
-import { Pencil, Trash2, XCircle, Star } from 'lucide-react'; // Importar iconos
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+// AÑADIDO: toast para notificaciones rápidas y UserPlus para el botón de crear
+import { toast, Toaster } from 'react-hot-toast';
+import { Pencil, Trash2, XCircle, Star, UserPlus } from 'lucide-react';
 
-// ... (El componente StatusToggle se queda igual)
 function StatusToggle({ isChecked, onChange, disabled }) {
   return (
     <label className="relative inline-flex items-center cursor-pointer">
@@ -19,19 +21,16 @@ function StatusToggle({ isChecked, onChange, disabled }) {
   );
 }
 
-
 export default function GestionUsuariosClient() {
-  const router = useRouter(); // Hook para navegar
+  const router = useRouter();
   const { data: users, error, isLoading, mutate } = useSWR('/api/users', fetcher);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // ... (El estado del modal se queda igual)
   const [showModal, setShowModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [premiumDates, setPremiumDates] = useState({ inicio: new Date(), fin: new Date() });
   
-  // ... (El useEffect para filtrar se queda igual)
   useEffect(() => {
     if (users) {
       const term = searchTerm.toLowerCase();
@@ -43,13 +42,75 @@ export default function GestionUsuariosClient() {
     }
   }, [searchTerm, users]);
 
+  // ==================================================================
+  // === INICIO DE LA LÓGICA IMPLEMENTADA ============================
+  // ==================================================================
 
-  // --- NUEVAS FUNCIONES Y ACTUALIZACIONES ---
-  const handleToggleStatus = async (user) => { /* ... (sin cambios) */ };
-  const handleUpdatePremium = async () => { /* ... (sin cambios) */ };
-  const openPremiumModal = (user) => { /* ... (sin cambios) */ };
+  const handleToggleStatus = async (user) => {
+    const originalStatus = user.active;
+    // Optimistic UI: Actualiza la UI inmediatamente
+    mutate(
+      users.map(u => u.id === user.id ? { ...u, active: !originalStatus } : u),
+      false // no revalidar inmediatamente
+    );
 
-  // NUEVA FUNCIÓN: Eliminar Usuario
+    const promise = fetch('/api/toggle-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id }),
+    });
+
+    toast.promise(promise, {
+      loading: 'Actualizando estado...',
+      success: `Estado de ${user.nombres} actualizado.`,
+      error: (err) => {
+        // Si hay un error, revierte la UI al estado original
+        mutate(
+          users.map(u => u.id === user.id ? { ...u, active: originalStatus } : u),
+          false
+        );
+        return 'No se pudo actualizar el estado.';
+      }
+    });
+  };
+
+  const openPremiumModal = (user) => {
+    setSelectedUser(user);
+    // Pre-rellena las fechas si el usuario ya es premium, si no, usa la fecha actual
+    const startDate = user.fechaSuscripcion ? new Date(user.fechaSuscripcion) : new Date();
+    const endDate = user.fechaVencimiento ? new Date(user.fechaVencimiento) : new Date();
+    
+    setPremiumDates({ inicio: startDate, fin: endDate });
+    setShowModal(true);
+  };
+  
+  const handleUpdatePremium = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      await fetch('/api/users/update-premium', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          fechaSuscripcion: premiumDates.inicio.toISOString().split('T')[0], // Formato YYYY-MM-DD
+          fechaVencimiento: premiumDates.fin.toISOString().split('T')[0], // Formato YYYY-MM-DD
+        }),
+      });
+
+      await Swal.fire('¡Actualizado!', `La suscripción de ${selectedUser.nombres} ha sido actualizada.`, 'success');
+      setShowModal(false);
+      setSelectedUser(null);
+      mutate(); // Revalida los datos para mostrar los cambios
+    } catch (err) {
+      Swal.fire('Error', 'No se pudo actualizar la suscripción.', 'error');
+    }
+  };
+  
+  // ================================================================
+  // === FIN DE LA LÓGICA IMPLEMENTADA ==============================
+  // ================================================================
+
   const handleDeleteUser = async (user) => {
     const result = await Swal.fire({
       title: '¿Estás seguro?',
@@ -70,14 +131,13 @@ export default function GestionUsuariosClient() {
           body: JSON.stringify({ userId: user.id }),
         });
         Swal.fire('Eliminado', 'El usuario ha sido eliminado.', 'success');
-        mutate(); // Actualizar la lista
+        mutate();
       } catch (err) {
         Swal.fire('Error', 'No se pudo eliminar el usuario.', 'error');
       }
     }
   };
 
-  // NUEVA FUNCIÓN: Quitar Premium
   const handleClearPremium = async (user) => {
     const result = await Swal.fire({
       title: 'Quitar Premium',
@@ -105,14 +165,19 @@ export default function GestionUsuariosClient() {
     }
   };
 
-
   if (isLoading) return <div className="p-8 text-center">Cargando usuarios...</div>;
   if (error) return <div className="p-8 text-center text-red-500">Error al cargar datos.</div>;
 
   return (
     <div className="p-4 sm:p-6 md:p-8">
-      {/* ... (Título y barra de búsqueda sin cambios) */}
-       <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">Gestión de Usuarios</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Usuarios</h1>
+        <Link href="/admin/users/Create" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow">
+          <UserPlus size={20} />
+          <span>Crear Usuario</span>
+        </Link>
+      </div>
+      
       <input
         type="text"
         placeholder="Buscar por nombre, apellido o correo..."
@@ -144,22 +209,21 @@ export default function GestionUsuariosClient() {
                   {user.fechaSuscripcion ? `${user.fechaSuscripcion} - ${user.fechaVencimiento}` : 'No'}
                 </td>
                 <td className="px-6 py-4">
-                  {/* --- NUEVOS BOTONES DE ACCIÓN --- */}
                   <div className="flex justify-center items-center gap-2">
-                     <button onClick={() => openPremiumModal(user)} title="Gestionar Premium" className="p-2 text-yellow-500 hover:text-yellow-400 rounded-full hover:bg-gray-700 transition">
-                      <Star size={18} />
-                    </button>
-                    {user.fechaSuscripcion && (
-                      <button onClick={() => handleClearPremium(user)} title="Quitar Premium" className="p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-700 transition">
-                        <XCircle size={18} />
+                      <button onClick={() => openPremiumModal(user)} title="Gestionar Premium" className="p-2 text-yellow-500 hover:text-yellow-400 rounded-full hover:bg-gray-700 transition">
+                        <Star size={18} />
                       </button>
-                    )}
-                    <button onClick={() => router.push(`/admin/users/edit/${user.id}`)} title="Editar Usuario" className="p-2 text-blue-500 hover:text-blue-400 rounded-full hover:bg-gray-700 transition">
-                      <Pencil size={18} />
-                    </button>
-                    <button onClick={() => handleDeleteUser(user)} title="Eliminar Usuario" className="p-2 text-red-500 hover:text-red-400 rounded-full hover:bg-gray-700 transition">
-                      <Trash2 size={18} />
-                    </button>
+                      {user.fechaSuscripcion && (
+                        <button onClick={() => handleClearPremium(user)} title="Quitar Premium" className="p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-700 transition">
+                          <XCircle size={18} />
+                        </button>
+                      )}
+                      <button onClick={() => router.push(`/admin/users/edit/${user.id}`)} title="Editar Usuario" className="p-2 text-blue-500 hover:text-blue-400 rounded-full hover:bg-gray-700 transition">
+                        <Pencil size={18} />
+                      </button>
+                      <button onClick={() => handleDeleteUser(user)} title="Eliminar Usuario" className="p-2 text-red-500 hover:text-red-400 rounded-full hover:bg-gray-700 transition">
+                        <Trash2 size={18} />
+                      </button>
                   </div>
                 </td>
               </tr>
@@ -168,7 +232,48 @@ export default function GestionUsuariosClient() {
         </table>
       </div>
 
-      {/* ... (El modal para las fechas premium se queda igual) */}
+      {/* --- CÓDIGO JSX DEL MODAL AÑADIDO --- */}
+      {showModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              Gestionar Premium de <span className="text-blue-600">{selectedUser.nombres}</span>
+            </h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Fecha de Inicio</label>
+                <DatePicker
+                  selected={premiumDates.inicio}
+                  onChange={(date) => setPremiumDates(prev => ({ ...prev, inicio: date }))}
+                  dateFormat="dd/MM/yyyy"
+                  className="w-full mt-1 p-2 border rounded bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Fecha de Vencimiento</label>
+                <DatePicker
+                  selected={premiumDates.fin}
+                  onChange={(date) => setPremiumDates(prev => ({ ...prev, fin: date }))}
+                  dateFormat="dd/MM/yyyy"
+                  className="w-full mt-1 p-2 border rounded bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
+                Cancelar
+              </button>
+              <button onClick={handleUpdatePremium} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                Guardar Cambios
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Componente para mostrar las notificaciones toast */}
+      <Toaster position="bottom-right" />
     </div>
   );
 }

@@ -1,11 +1,8 @@
-// src/context/AuthContext.jsx
 'use client';
 import { createContext, useState, useEffect, useContext } from 'react';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, getIdTokenResult, signOut as fbSignOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-// Importa cookies de 'js-cookie' para eliminar cookies no HttpOnly si es necesario
-// import Cookies from 'js-cookie'; // Descomentar si necesitas eliminar otras cookies no HttpOnly
 
 const AuthContext = createContext();
 
@@ -13,74 +10,56 @@ export function AuthProvider({ children }) {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // El estado de carga inicial es true
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoading(true); // Inicia carga al detectar cambio
+      // YA NO hacemos setLoading(true) aquí para evitar parpadeos.
       if (firebaseUser) {
         try {
-          const tokenResult = await getIdTokenResult(firebaseUser, true); // Forzar refresh
+          const tokenResult = await getIdTokenResult(firebaseUser, true);
           const emailFallback = firebaseUser.email === (process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@admin.com') ? 'admin' : 'user';
           const assignedRole = tokenResult.claims.role || emailFallback;
 
           setUser(firebaseUser);
           setRole(assignedRole);
-          // Actualiza la cookie 'role' en el cliente (si es necesario y no HttpOnly)
-          // document.cookie = `role=${assignedRole}; path=/; max-age=86400; SameSite=Strict; Secure=${process.env.NODE_ENV === 'production'}`;
-          console.log('AuthContext: User authenticated, role:', assignedRole);
+          console.log('AuthContext: Usuario autenticado, rol:', assignedRole);
+
         } catch (error) {
-          console.error("AuthContext: Error getting token result:", error);
-          // Si hay error obteniendo token, desloguear localmente
+          console.error("AuthContext: Error al obtener el token:", error);
           setUser(null);
           setRole(null);
-          // document.cookie = "role=; path=/; max-age=0"; // Limpiar cookie de rol cliente
         }
       } else {
         setUser(null);
         setRole(null);
-        // Limpiar la cookie 'role' del cliente al desloguear
-        // document.cookie = "role=; path=/; max-age=0";
-        console.log('AuthContext: No user authenticated.');
+        console.log('AuthContext: No hay usuario autenticado.');
       }
-      setLoading(false); // Finaliza carga
+      // La carga inicial termina aquí. Esto solo pasa de true a false una vez.
+      setLoading(false);
     });
-    return () => unsub(); // Limpiar suscripción al desmontar
-  }, []); // Ejecutar solo una vez al montar
 
+    return () => unsub(); // Limpiar la suscripción
+  }, []); // El array vacío asegura que se ejecute solo una vez
+
+  // Tu función signOut ya es bastante robusta, la mantenemos.
   const signOut = async () => {
-    setLoading(true); // Indicar que el proceso de logout está en curso
     console.log('AuthContext: Iniciando signOut...');
     try {
-      // 1. Llamar a la API para limpiar las cookies del servidor (__session y role)
-      const response = await fetch('/api/logout', { method: 'POST' });
-      if (!response.ok) {
-        // Intenta continuar incluso si falla la limpieza de cookies, pero loguea el error
-        console.error('AuthContext: Falló la llamada a /api/logout', await response.text());
-      } else {
-        console.log('AuthContext: Llamada a /api/logout exitosa.');
-      }
-
-      // 2. Cerrar sesión en Firebase (lado del cliente)
+      await fetch('/api/logout', { method: 'POST' });
+      console.log('AuthContext: Llamada a /api/logout exitosa.');
+      
       await fbSignOut(auth);
       console.log('AuthContext: Firebase signOut completado.');
-
-      // 3. Limpiar estado local explícitamente (aunque onAuthStateChanged también lo hará)
+      
+      // El listener onAuthStateChanged se encargará de limpiar el estado,
+      // pero una limpieza explícita y redirección inmediata es buena práctica.
       setUser(null);
       setRole(null);
-
-      // 4. Redirigir a la página de login
-      console.log('AuthContext: Redirigiendo a /login...');
-      router.push('/login'); // Usa push para permitir volver atrás si es necesario (o replace si no)
+      router.push('/login');
 
     } catch (error) {
       console.error('AuthContext: Error durante signOut:', error);
-      // Manejar el error como sea apropiado, quizás mostrar un mensaje al usuario
-    } finally {
-      // Asegúrate de que loading se ponga en false eventualmente,
-      // aunque la redirección debería ocurrir antes.
-      // Podrías quitar setLoading(true) si la redirección es inmediata.
-      // setLoading(false);
     }
   };
 
@@ -94,7 +73,7 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth debe ser usado dentro de un AuthProvider');
   }
   return context;
 }

@@ -3,55 +3,88 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, query, onSnapshot } from 'firebase/firestore';
-import { useAuth } from '@/context/AuthContext';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import ProductGrid from '@/app/components/marketplace/ProductGrid';
+import { Loader, Star, ShoppingBag, Inbox } from 'lucide-react';
 
 export default function MarketplacePage() {
-  const { user, loading: authLoading } = useAuth();
-  const [products, setProducts] = useState([]);
+  const [premiumProducts, setPremiumProducts] = useState([]);
+  const [regularProducts, setRegularProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!authLoading && user) {
-      // Escuchamos en tiempo real los cambios en la colección 'products'
-      const q = query(collection(db, 'products'));
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const productsData = [];
-        querySnapshot.forEach((doc) => {
-          productsData.push({ id: doc.id, ...doc.data() });
-        });
-        setProducts(productsData);
-        setLoading(false);
-      }, (error) => {
-        console.error("Error fetching products: ", error);
-        setLoading(false);
-      });
+    setLoading(true);
 
-      // Limpiamos el listener cuando el componente se desmonta
-      return () => unsubscribe();
-    }
-  }, [user, authLoading]);
+    // 1. Consulta para productos Premium y DISPONIBLES
+    const premiumQuery = query(
+      collection(db, 'products'),
+      where('isPremium', '==', true),
+      where('estado', '==', 'disponible') // <-- AÑADIDO: Filtro de disponibilidad
+      // orderBy('fechaCreacion', 'desc') // Puedes reactivar esto si creaste el índice
+    );
+    const unsubscribePremium = onSnapshot(premiumQuery, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setPremiumProducts(data);
+    });
 
-  if (authLoading || loading) {
+    // 2. Consulta para productos Regulares y DISPONIBLES
+    const regularQuery = query(
+      collection(db, 'products'),
+      where('isPremium', '==', false),
+      where('estado', '==', 'disponible') // <-- AÑADIDO: Filtro de disponibilidad
+      // orderBy('fechaCreacion', 'desc') // Puedes reactivar esto si creaste el índice
+    );
+    const unsubscribeRegular = onSnapshot(regularQuery, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setRegularProducts(data);
+      setLoading(false); 
+    }, (error) => {
+      console.error("Error fetching regular products:", error.message);
+      setLoading(false);
+    });
+
+    return () => {
+      unsubscribePremium();
+      unsubscribeRegular();
+    };
+  }, []);
+
+  if (loading) {
     return (
-      <div className="text-center p-10">
-        <p className="animate-pulse">Cargando pines...</p>
+      <div className="flex flex-col items-center justify-center min-h-[80vh]">
+        <Loader className="w-12 h-12 animate-spin text-blue-500" />
+        <p className="mt-4 text-lg text-gray-700 dark:text-gray-300">Cargando productos...</p>
       </div>
     );
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8 text-center">Explora</h1>
-      {products.length > 0 ? (
-        <ProductGrid products={products} />
-      ) : (
-        <div className="text-center text-gray-500">
-          <p>¡Aún no hay nada por aquí!</p>
-          <p>Sé el primero en crear un Pin.</p>
-        </div>
+      {premiumProducts.length > 0 && (
+        <section className="mb-16">
+          <div className="flex items-center gap-3 mb-6">
+            <Star className="text-yellow-400" size={32} />
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Destacados</h2>
+          </div>
+          <ProductGrid products={premiumProducts} />
+        </section>
       )}
+
+      <section>
+         <div className="flex items-center gap-3 mb-6">
+            <ShoppingBag className="text-blue-500" size={32} />
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Explora lo Nuevo</h2>
+          </div>
+        {regularProducts.length > 0 || premiumProducts.length > 0 ? (
+          <ProductGrid products={regularProducts} />
+        ) : (
+          <div className="text-center text-gray-500 py-10">
+            <Inbox size={48} className="mx-auto mb-4"/>
+            <p className="text-xl font-semibold">¡Aún no hay productos disponibles!</p>
+            <p>Vuelve más tarde o sé el primero en publicar algo increíble.</p>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

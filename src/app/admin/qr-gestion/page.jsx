@@ -1,173 +1,165 @@
 'use client';
-import { useEffect, useState } from 'react';
+
+import { useEffect, useState, useCallback } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast, Toaster } from 'react-hot-toast';
-import { useTheme } from '@/context/ThemeContext'; // 1. Importar el hook
+import { useTheme } from '@/context/ThemeContext';
+import { QrCode, Phone, Save, Loader, AlertCircle } from 'lucide-react';
 
 export default function QRGestionPage() {
-  const [qrActual, setQrActual] = useState('');
-  const [nuevoLink, setNuevoLink] = useState('');
+  // Estados para los inputs del formulario
+  const [newPhone, setNewPhone] = useState('');
+  const [newQrLink, setNewQrLink] = useState('');
+  
+  // Estados para la validación y previsualización
   const [previsualizacion, setPrevisualizacion] = useState('');
   const [validando, setValidando] = useState(false);
-  const { isDark, isLoaded } = useTheme(); // 2. Obtener el estado del tema
+  const [errorValidacion, setErrorValidacion] = useState('');
 
-  const docRef = doc(db, 'pags', 'qr');
+  const [loading, setLoading] = useState(true);
+  const { isDark, isLoaded } = useTheme();
 
-  // 3. Estilos reutilizables para la UI basados en el tema
-  const containerStyle = {
-    backgroundColor: isDark ? '#1f2937' : '#ffffff', // Darker background for dark mode
-    borderColor: isDark ? '#374151' : '#e5e7eb', // Border color
-    color: isDark ? '#f9fafb' : '#111827', // Default text color
-  };
-  const titleStyle = {
-    color: isDark ? '#60a5fa' : '#3b82f6', // Blue for titles
-  };
-  const subtitleStyle = {
-    color: isDark ? '#f9fafb' : '#111827', // Stronger color for subtitles
-  };
-  const paragraphStyle = {
-    color: isDark ? '#d1d5db' : '#6b7280', // Lighter grey for general text
-  };
-  const labelStyle = {
-    color: isDark ? '#f9fafb' : '#111827', // Label text color
-  };
-  const inputStyle = {
-    backgroundColor: isDark ? '#374151' : '#ffffff', // Input background
-    color: isDark ? '#f9fafb' : '#111827', // Input text color
-    borderColor: isDark ? '#4b5563' : '#d1d5db', // Input border
-    // Tailwind classes for focus ring are already applied
-  };
-  const buttonEnabledStyle = {
-    backgroundColor: isDark ? '#3b82f6' : '#3b82f6', // Blue for enabled button
-    color: '#ffffff',
-  };
-  const buttonDisabledStyle = {
-    backgroundColor: isDark ? '#4b5563' : '#d1d5db', // Grey for disabled button
-    color: isDark ? '#9ca3af' : '#9ca3af',
-  };
+  const configRef = doc(db, 'config', 'payment');
 
+  const containerStyle = { backgroundColor: isDark ? '#1f2937' : '#ffffff', color: isDark ? '#f9fafb' : '#111827' };
+  const inputStyle = { backgroundColor: isDark ? '#374151' : '#f9fafb', color: isDark ? '#f9fafb' : '#111827', borderColor: isDark ? '#4b5563' : '#d1d5db' };
+  
+  // Cargar los datos iniciales desde Firestore
   useEffect(() => {
-    const cargarQR = async () => {
-      // Ensure theme is loaded before fetching data if it impacts initial render
+    const loadInitialData = async () => {
       if (!isLoaded) return;
       try {
-        const docSnap = await getDoc(docRef);
+        const docSnap = await getDoc(configRef);
         if (docSnap.exists()) {
-          setQrActual(docSnap.data().url);
+          const data = docSnap.data();
+          // Solo inicializamos los estados del formulario una vez
+          setNewPhone(data.adminWhatsapp || '');
+          setNewQrLink(data.qrImageUrl || '');
+          setPrevisualizacion(data.qrImageUrl || '');
         }
       } catch (error) {
-        console.error("Error cargando QR:", error);
-        toast.error('Error al cargar el QR actual.');
+        toast.error('Error al cargar la información de contacto.');
+      } finally {
+        setLoading(false);
       }
     };
-    cargarQR();
-  }, [docRef, isLoaded]); // Add docRef to dependencies for useEffect clean-up.
+    loadInitialData();
+  }, [isLoaded]); // Dependencia solo de isLoaded para que se ejecute una vez
 
-  const validarYPrevisualizar = async (link) => {
-    setPrevisualizacion('');
+  // Lógica de validación del enlace de la imagen
+  const validarYPrevisualizar = useCallback(async (link) => {
+    if (!link || !link.startsWith('http')) {
+        setPrevisualizacion('');
+        setErrorValidacion('');
+        return;
+    }
     setValidando(true);
-
+    setErrorValidacion('');
     try {
       const res = await fetch(link, { method: 'HEAD' });
       const contentType = res.headers.get('content-type');
       if (res.ok && contentType?.startsWith('image')) {
         setPrevisualizacion(link);
       } else {
-        toast.error('El enlace no es válido o no es una imagen.');
+        setPrevisualizacion('');
+        setErrorValidacion('El enlace no es una imagen válida (JPG, PNG, etc).');
       }
     } catch (err) {
-      toast.error('No se pudo validar el enlace.');
+      setPrevisualizacion('');
+      setErrorValidacion('No se pudo acceder al enlace. Verifica que sea correcto y público.');
     }
-
     setValidando(false);
-  };
+  }, []);
 
   const manejarCambioLink = (e) => {
     const valor = e.target.value;
-    setNuevoLink(valor);
-    if (valor.startsWith('http')) {
+    setNewQrLink(valor);
+    // Usamos un temporizador (debounce) para no validar en cada tecla
+    const handler = setTimeout(() => {
       validarYPrevisualizar(valor);
-    } else {
-      setPrevisualizacion('');
-    }
+    }, 500); // Espera 500ms después de que el usuario deja de escribir
+    return () => clearTimeout(handler);
   };
 
-  const actualizarQR = async () => {
-    if (!previsualizacion) {
-      toast.error('No puedes guardar un enlace inválido.');
+  const handleSaveChanges = async () => {
+    if (!previsualizacion || !newPhone) {
+      toast.error('El número de teléfono y un enlace de QR válido son obligatorios.');
       return;
     }
-
+    
+    const loadingToast = toast.loading('Guardando cambios...');
     try {
-      await setDoc(docRef, { url: previsualizacion });
-      setQrActual(previsualizacion);
-      setNuevoLink('');
-      setPrevisualizacion('');
-      toast.success('QR actualizado correctamente.');
+      await setDoc(configRef, { 
+        qrImageUrl: previsualizacion, // Guardamos el enlace validado
+        adminWhatsapp: newPhone
+      });
+      toast.success('Información de contacto actualizada.', { id: loadingToast });
     } catch (err) {
-      console.error(err);
-      toast.error('Error al actualizar el QR.');
+      toast.error('No se pudieron guardar los cambios.', { id: loadingToast });
     }
   };
 
-  // Show a loading message if theme is not yet loaded
-  if (!isLoaded) {
+  if (loading || !isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: isDark ? '#111827' : '#f9fafb' }}>
-        <p className="animate-pulse" style={{ color: isDark ? '#f9fafb' : '#111827' }}>Cargando gestión QR...</p>
+        <Loader className="animate-spin text-blue-500" size={48} />
       </div>
     );
   }
 
   return (
-    <div className="max-w-xl mx-auto p-6 rounded-xl shadow-md mt-10 border" style={containerStyle}>
-      <h1 className="text-2xl font-bold mb-4" style={titleStyle}>Gestión de Código QR</h1>
+    <div className="max-w-2xl mx-auto p-6 rounded-xl shadow-lg mt-10 border" style={containerStyle}>
+      <Toaster position="top-right" />
+      <h1 className="text-2xl font-bold mb-6 text-blue-500">Información de Contacto y Pago</h1>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">Esta información se mostrará a los vendedores cuando soliciten un producto premium.</p>
 
-      <div className="mb-4">
-        <h2 className="font-semibold mb-2" style={subtitleStyle}>QR Actual:</h2>
-        {qrActual ? (
-          <img src={qrActual} alt="QR Actual" className="w-48 h-auto rounded border" style={{ borderColor: isDark ? '#4b5563' : '#d1d5db' }} />
+      <div className="space-y-6">
+        <div>
+          <label htmlFor="telefono" className="block font-medium mb-2 flex items-center gap-2"><Phone size={18}/> Número de WhatsApp del Admin</label>
+          <input
+            id="telefono" type="number" value={newPhone}
+            onChange={(e) => setNewPhone(e.target.value)}
+            className="w-full rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            style={inputStyle} placeholder="Ej: 71234567"
+          />
+        </div>
+        <div>
+          <label htmlFor="qr-link" className="block font-medium mb-2 flex items-center gap-2"><QrCode size={18}/> Enlace de la Imagen del QR</label>
+          <input
+            id="qr-link" type="text" value={newQrLink}
+            onChange={manejarCambioLink}
+            className="w-full rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            style={inputStyle} placeholder="https://..."
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 min-h-[200px]">
+        <p className="text-sm mb-2 text-gray-600 dark:text-gray-300">Previsualización del QR:</p>
+        {validando ? (
+            <div className="flex items-center gap-2 text-gray-500"><Loader className="animate-spin" size={20}/> Validando...</div>
+        ) : previsualizacion ? (
+            <img src={previsualizacion} alt="Previsualización QR" className="w-48 h-auto border-4 rounded-lg" style={{ borderColor: inputStyle.borderColor }} />
         ) : (
-          <p style={paragraphStyle}>No se ha establecido aún.</p>
+            <div className="w-48 h-48 border-4 border-dashed rounded-lg flex items-center justify-center text-center text-gray-400" style={{ borderColor: inputStyle.borderColor }}>
+                {errorValidacion ? 
+                    <span className="text-red-500 text-sm p-2 flex items-center gap-2"><AlertCircle size={20}/> {errorValidacion}</span> : 
+                    <span>Pega un enlace de imagen válido</span>
+                }
+            </div>
         )}
       </div>
 
-      <div className="mb-4">
-        <label htmlFor="nuevo" className="block font-medium mb-1" style={labelStyle}>
-          Nuevo enlace de imagen QR:
-        </label>
-        <input
-          id="nuevo"
-          type="text"
-          value={nuevoLink}
-          onChange={manejarCambioLink}
-          className="w-full rounded px-3 py-2 focus:outline-none focus:ring focus:ring-blue-500 transition"
-          style={inputStyle}
-          placeholder="https://..."
-        />
+      <div className="mt-8 text-right">
+        <button
+          onClick={handleSaveChanges}
+          disabled={!previsualizacion || !newPhone}
+          className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center gap-2 float-right disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
+          <Save size={20}/> Guardar Cambios
+        </button>
       </div>
-
-      {validando && <p className="text-sm" style={paragraphStyle}>Validando enlace...</p>}
-
-      {previsualizacion && (
-        <div className="mb-4">
-          <p className="text-sm mb-1" style={paragraphStyle}>Previsualización:</p>
-          <img src={previsualizacion} alt="Previsualización" className="w-48 h-auto border rounded" style={{ borderColor: isDark ? '#4b5563' : '#d1d5db' }} />
-        </div>
-      )}
-
-      <button
-        disabled={!previsualizacion}
-        onClick={actualizarQR}
-        className="text-white px-4 py-2 rounded transition"
-        style={!previsualizacion ? buttonDisabledStyle : buttonEnabledStyle}
-      >
-        Actualizar QR
-      </button>
-
-      {/* react-hot-toast maneja sus propios estilos de tema, pero puedes customizarlos si es necesario */}
-      <Toaster position="top-right" />
     </div>
   );
 }

@@ -9,17 +9,29 @@ module.exports = {
     return config;
   },
 
-  // SECCIÓN AÑADIDA PARA PERMITIR IMÁGENES DE GOOGLE
   images: {
     remotePatterns: [
+      // Tu configuración existente para las fotos de perfil de Google
       {
         protocol: 'https',
-        hostname: 'lh3.googleusercontent.com', // Dominio de las fotos de perfil de Google
+        hostname: 'lh3.googleusercontent.com',
         port: '',
-        pathname: '/**', // Permitir cualquier ruta de imagen dentro de ese dominio
+        pathname: '/**',
       },
-      // Si en el futuro usas otro proveedor de autenticación (ej. Facebook),
-      // puedes añadir su dominio aquí.
+      // AÑADIDO: Configuración para las imágenes de Firebase Storage
+      {
+        protocol: 'https',
+        hostname: 'storage.googleapis.com',
+        port: '',
+        pathname: '/**',
+      },
+      // AÑADIDO: Configuración para las imágenes de placeholder
+      {
+        protocol: 'https',
+        hostname: 'placehold.co',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };

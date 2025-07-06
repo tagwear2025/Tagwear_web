@@ -1,14 +1,24 @@
-// 3. Crea este archivo en: src/app/components/marketplace/ProductGrid.jsx
 'use client';
 
 import ProductCard from './ProductCard';
 
+// Componente para mostrar la cuadrícula de productos estilo Pinterest
 export default function ProductGrid({ products }) {
+  // Verificación para asegurar que 'products' es un array
+  if (!Array.isArray(products)) {
+    return <p>No hay productos para mostrar.</p>;
+  }
+
   return (
     <div 
-      className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 2xl:columns-6 gap-4 space-y-4"
+      className="w-full"
+      style={{
+        columnCount: 'auto',
+        columnWidth: '250px', // Ancho base de cada columna
+        columnGap: '1rem',
+      }}
     >
-      {products.map(product => (
+      {products.map((product) => (
         <ProductCard key={product.id} product={product} />
       ))}
     </div>

@@ -1,28 +1,28 @@
-'use client';
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { AuthProvider } from "@/context/AuthContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 
-import { AuthProvider } from '@/context/AuthContext';
-import { ThemeProvider } from '@/context/ThemeContext';
-import { Toaster } from 'react-hot-toast'; // 1. Importa el componente Toaster
-import './globals.css';
+const inter = Inter({ subsets: ["latin"] });
 
+export const metadata = {
+  title: "Tag-Wear",
+  description: "Tag-Wear by victordev",
+};
+
+// Este es el layout raíz. Envuelve TODA la aplicación.
 export default function RootLayout({ children }) {
   return (
     <html lang="es">
-      <head />
-      <body className="min-h-screen">
-        <ThemeProvider>
-          <AuthProvider>
-            {/* 2. Añade el componente Toaster aquí */}
-            <Toaster 
-              position="top-right" // Puedes personalizar la posición
-              toastOptions={{
-                // Estilos opcionales para que coincida con tu tema
-                className: 'dark:bg-gray-700 dark:text-white',
-              }}
-            />
+      <body className={inter.className}>
+        {/* 1. Proveedor de Autenticación en el nivel más alto. */}
+        <AuthProvider>
+          {/* 2. Proveedor de Tema justo después, para que use el estado de auth si es necesario. */}
+          <ThemeProvider>
+            {/* 3. Aquí se renderizarán todas tus páginas y layouts anidados. */}
             {children}
-          </AuthProvider>
-        </ThemeProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

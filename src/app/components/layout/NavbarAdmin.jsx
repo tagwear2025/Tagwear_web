@@ -12,8 +12,8 @@ import {
 } from 'lucide-react';
 
 export default function AdminNavbar({ children }) {
-  // Obtenemos loading junto con user y signOut
-  const { user, loading, signOut } = useAuth();
+  // ✅ CORRECCIÓN: Cambiamos 'signOut' por 'logout' para que coincida con el AuthContext.
+  const { user, loading, logout } = useAuth();
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -90,7 +90,6 @@ export default function AdminNavbar({ children }) {
   const notificationItemStyle = { borderBottomColor: isDark ? '#4a5568' : '#e2e8f0' };
   const emptyNotificationStyle = { color: isDark ? '#cbd5e0' : '#718096' };
   
-  // Esqueleto de carga para el Navbar
   if (!isLoaded || loading) {
     return (
       <div className="min-h-screen" style={{ backgroundColor: isDark ? '#111827' : '#f9fafb' }}>
@@ -124,7 +123,6 @@ export default function AdminNavbar({ children }) {
             {isDark ? <Sun className="w-5 h-5 text-yellow-500" /> : <Moon className="w-5 h-5 text-gray-700" />}
           </button>
           
-          {/* ESTE BLOQUE SE RENDERIZA AHORA CORRECTAMENTE */}
           {!loading && user && (
             <>
               <button ref={bellButtonRef} onClick={toggleNotifications} className={`relative p-2 rounded-lg transition-all duration-200 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
@@ -149,19 +147,20 @@ export default function AdminNavbar({ children }) {
                     )}
                   </div>
                   {notifications.length > 0 && (
-                     <div className={`px-4 py-2 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'} text-right`}>
-                       <Link href="/admin/solicitudes" className={`text-sm font-medium ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'}`} onClick={() => setShowNotifications(false)}>
-                         Ver todas las solicitudes
-                       </Link>
-                     </div>
-                  )}
+                       <div className={`px-4 py-2 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'} text-right`}>
+                          <Link href="/admin/solicitudes" className={`text-sm font-medium ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'}`} onClick={() => setShowNotifications(false)}>
+                            Ver todas las solicitudes
+                          </Link>
+                       </div>
+                   )}
                 </div>
               )}
 
               {!isMobile && (
                 <>
                   <img src="/icons/user.png" alt="user" className={"w-7"} />
-                  <button onClick={signOut} className={`px-4 py-2 text-white rounded-lg font-medium transition-all duration-200 ${isDark ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'}`}>
+                  {/* ✅ CORRECCIÓN: Usamos 'logout' en el onClick */}
+                  <button onClick={logout} className={`px-4 py-2 text-white rounded-lg font-medium transition-all duration-200 ${isDark ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'}`}>
                     Cerrar sesión
                   </button>
                 </>
@@ -196,7 +195,8 @@ export default function AdminNavbar({ children }) {
                 </div>
               )}
               
-              <button onClick={signOut} title="Cerrar sesión" className={`rounded-lg transition-all duration-300 ${isSidebarOpen ? 'p-2 bg-red-500 text-white hover:bg-red-600' : 'p-1 text-gray-500 hover:text-red-500'}`}>
+              {/* ✅ CORRECCIÓN: Usamos 'logout' en el onClick */}
+              <button onClick={logout} title="Cerrar sesión" className={`rounded-lg transition-all duration-300 ${isSidebarOpen ? 'p-2 bg-red-500 text-white hover:bg-red-600' : 'p-1 text-gray-500 hover:text-red-500'}`}>
                 <LogOut className="w-5 h-5" />
               </button>
             </div>

@@ -49,5 +49,5 @@ next-env.d.ts
 tagwear-a26ca-firebase-adminsdk-fbsvc-7d69650c8d.json
 
 # Ignorar credenciales de Google Cloud / Firebase
-serviceAccountKey.json
-
+#serviceAccountKey.json
+src/lib/firebase-adminsdk.json

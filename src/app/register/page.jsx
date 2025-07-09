@@ -52,36 +52,32 @@ export default function RegisterPage() {
     if (loading) return;
     setLoading(true);
 
-    const { password, confirmPassword, ...otherFields } = formData;
+    const { password, confirmPassword } = formData;
+
     if (password !== confirmPassword) {
-      Swal.fire({ icon: 'error', title: 'Error', text: 'Las contraseñas no coinciden.' });
+      await Swal.fire({ icon: 'error', title: 'Error', text: 'Las contraseñas no coinciden.', background: isDark ? '#1f2937' : '#ffffff', color: isDark ? '#f9fafb' : '#111827' });
       setLoading(false);
       return;
     }
     if (password.length < 6) {
-        Swal.fire({ icon: 'warning', title: 'Contraseña Débil', text: 'La contraseña debe tener al menos 6 caracteres.' });
-        setLoading(false);
-        return;
+      await Swal.fire({ icon: 'warning', title: 'Contraseña Débil', text: 'La contraseña debe tener al menos 6 caracteres.', background: isDark ? '#1f2937' : '#ffffff', color: isDark ? '#f9fafb' : '#111827' });
+      setLoading(false);
+      return;
     }
 
     try {
-      // Preparamos el payload para la API
+      // --- ✅ CORRECCIÓN CLAVE ---
+      // El payload ahora es un objeto plano, que coincide con lo que
+      // tu API en `src/app/api/register/route.js` espera.
       const payload = {
+        nombres: formData.nombres,
+        apellidos: formData.apellidos,
+        fechaNacimiento: formData.fechaNacimiento,
+        sexo: formData.sexo,
+        lugarResidencia: formData.lugarResidencia,
         email: formData.email,
         password: formData.password,
-        // Datos adicionales que se guardarán en Firestore
-        userData: {
-          nombres: formData.nombres,
-          apellidos: formData.apellidos,
-          fechaNacimiento: formData.fechaNacimiento,
-          sexo: formData.sexo,
-          lugarResidencia: formData.lugarResidencia,
-          email: formData.email,
-          estadoCuenta: true,
-          role: 'user', // Asignamos rol de usuario por defecto
-          isSellerVerified: false, // ¡IMPORTANTE! El usuario no es vendedor verificado al inicio.
-          createdAt: new Date().toISOString(),
-        }
+        estadoCuenta: true, // Se establece la cuenta como activa por defecto
       };
 
       const response = await fetch('/api/register', {
@@ -91,23 +87,25 @@ export default function RegisterPage() {
       });
 
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Ocurrió un error al registrar la cuenta.');
+      if (!response.ok) {
+        throw new Error(result.error || 'Ocurrió un error al registrar la cuenta.');
+      }
 
       await Swal.fire({
         icon: 'success', title: '¡Registro Exitoso!',
         text: 'Tu cuenta ha sido creada. Serás redirigido al login.',
         timer: 2000, showConfirmButton: false, timerProgressBar: true,
+        background: isDark ? '#1f2937' : '#ffffff', color: isDark ? '#f9fafb' : '#111827'
       });
       router.push('/login');
 
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Error en el Registro', text: error.message });
+      await Swal.fire({ icon: 'error', title: 'Error en el Registro', text: error.message, background: isDark ? '#1f2937' : '#ffffff', color: isDark ? '#f9fafb' : '#111827' });
     } finally {
       setLoading(false);
     }
   };
   
-  // El resto de tu componente JSX permanece igual...
   const inputStyle = "w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-gray-900 dark:text-gray-100 placeholder-gray-500";
   const tabStyle = "flex-1 py-2.5 text-center text-sm font-medium rounded-lg cursor-pointer transition-colors";
   const activeTabStyle = "bg-blue-600 text-white shadow";
@@ -132,8 +130,7 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit}>
             {activeTab === 'personal' && (
               <div className="space-y-6 animate-fadeIn">
-                {/* ... tu formulario de datos personales ... */}
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="relative">
                         <label htmlFor="nombres" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombres</label>
                         <User className="absolute bottom-3.5 left-3 text-gray-400" size={20} />
@@ -167,7 +164,7 @@ export default function RegisterPage() {
                             {departamentos.map(dep => <option key={dep} value={dep}>{dep}</option>)}
                         </select>
                     </div>
-                </div>
+                  </div>
                 <div className="pt-4 flex justify-end">
                     <button type="button" onClick={handleNextStep} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors">
                         Siguiente <ArrowRight size={20} />
@@ -177,7 +174,6 @@ export default function RegisterPage() {
             )}
             {activeTab === 'cuenta' && (
               <div className="space-y-6 animate-fadeIn">
-                {/* ... tu formulario de datos de cuenta ... */}
                 <div className="relative">
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Correo Electrónico</label>
                     <Mail className="absolute bottom-3.5 left-3 text-gray-400" size={20} />

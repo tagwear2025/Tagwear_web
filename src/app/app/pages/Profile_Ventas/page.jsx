@@ -7,8 +7,8 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import Link from 'next/link';
 import { ShieldCheck, Loader, Frown, PlusCircle } from 'lucide-react';
-import MyProductsList from '@/app/components/productos/MyProductsList'; // <-- 1. IMPORTAR
-import { Toaster } from 'react-hot-toast'; // Para notificaciones
+import MyProductsList from '@/app/components/productos/MyProductsList';
+import { Toaster } from 'react-hot-toast';
 
 // Componente que se muestra si el usuario NO está verificado
 const BecomeSellerPrompt = () => (
@@ -25,7 +25,7 @@ const BecomeSellerPrompt = () => (
 );
 
 // Componente que se muestra si el usuario SÍ está verificado
-const SellerMarketplace = ({ user }) => ( // <-- 2. RECIBIR EL USUARIO
+const SellerMarketplace = ({ user }) => (
   <div>
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
@@ -41,7 +41,6 @@ const SellerMarketplace = ({ user }) => ( // <-- 2. RECIBIR EL USUARIO
         </Link>
     </div>
     
-    {/* 3. RENDERIZAR LA LISTA DE PRODUCTOS */}
     <div className="p-1 sm:p-6 bg-white dark:bg-gray-800 rounded-lg shadow-inner">
       <h2 className="text-2xl font-semibold mb-6 text-gray-800 dark:text-gray-200">Mis Productos</h2>
       <MyProductsList user={user} />
@@ -59,18 +58,27 @@ export default function ProfileVentasPage() {
     if (authLoading || !user) return;
 
     const checkVerificationStatus = async () => {
+      if (!user.uid) return;
       const userDocRef = doc(db, 'users', user.uid);
       try {
         const docSnap = await getDoc(userDocRef);
+        
+        // --- ✅ CORRECCIÓN CLAVE ---
+        // Si el documento existe, leemos el campo `isSellerVerified`.
+        // Si NO existe, en lugar de fallar, simplemente asumimos que el
+        // usuario no es un vendedor verificado.
         if (docSnap.exists()) {
           setIsVerified(docSnap.data().isSellerVerified === true);
         } else {
-          throw new Error("No se encontró el documento del usuario.");
+          // Esto maneja el caso de un usuario recién registrado cuyo
+          // documento podría no estar disponible instantáneamente.
+          console.warn(`Documento para el usuario ${user.uid} no encontrado. Se tratará como no verificado.`);
+          setIsVerified(false);
         }
       } catch (err) {
-        console.error("Error fetching user verification status:", err);
-        setError(err.message);
-        setIsVerified(false); // Asumir no verificado en caso de error
+        console.error("Error crítico al buscar el estado de verificación:", err);
+        setError("No se pudo conectar con la base de datos para verificar tu estado.");
+        setIsVerified(false); // Asumir no verificado en caso de error de conexión
       }
     };
 
@@ -78,7 +86,7 @@ export default function ProfileVentasPage() {
   }, [user, authLoading]);
 
   // Estado de Carga
-  if (isVerified === null) {
+  if (isVerified === null || authLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <Loader className="w-12 h-12 animate-spin text-blue-500" />

@@ -5,22 +5,20 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Swal from 'sweetalert2';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { User, Calendar, Users, MapPin, Edit, Save, Loader, ShieldCheck, Image as ImageIcon, Lock, Eye, EyeOff, Phone, LogOut } from 'lucide-react';
 import { db, storage } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { updateProfile, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 
-// --- COMPONENTES INTERNOS (Sin cambios) ---
+// --- Componentes internos no cambian ---
 const ProfileInput = ({ id, label, value, onChange, icon, disabled, type = 'text', placeholder = '' }) => (
-  <div className="relative">
-    <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
-    <div className="absolute top-9 left-3 text-gray-400">{icon}</div>
-    <input id={id} name={id} type={type} value={value || ''} onChange={onChange} disabled={disabled} placeholder={placeholder} className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-gray-900 dark:text-gray-100 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:cursor-not-allowed" />
-  </div>
+    <div className="relative">
+        <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
+        <div className="absolute top-9 left-3 text-gray-400">{icon}</div>
+        <input id={id} name={id} type={type} value={value || ''} onChange={onChange} disabled={disabled} placeholder={placeholder} className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 text-gray-900 dark:text-gray-100 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:cursor-not-allowed" />
+    </div>
 );
-
 const ProfileSelect = ({ id, label, value, onChange, icon, disabled, options }) => (
     <div className="relative">
         <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
@@ -31,7 +29,6 @@ const ProfileSelect = ({ id, label, value, onChange, icon, disabled, options }) 
         </select>
     </div>
 );
-
 const EditableDocumentImage = ({ label, imageUrl, onEdit, disabled, cooldownTimeLeft }) => {
     const formatCooldown = (ms) => {
         if (ms <= 0) return '';
@@ -41,7 +38,6 @@ const EditableDocumentImage = ({ label, imageUrl, onEdit, disabled, cooldownTime
         const minutes = Math.ceil(ms / (1000 * 60));
         return `${minutes} min`;
     };
-    
     return (
         <div className="text-center relative group">
             <p className="font-semibold mb-2">{label}</p>
@@ -52,7 +48,7 @@ const EditableDocumentImage = ({ label, imageUrl, onEdit, disabled, cooldownTime
                         <Edit size={32} />
                     </button>
                 )}
-                 {disabled && cooldownTimeLeft > 0 && (
+                {disabled && cooldownTimeLeft > 0 && (
                     <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-white p-2 rounded-lg">
                         <p className="text-xs font-semibold">Puedes editar en:</p>
                         <p className="text-lg font-bold">{formatCooldown(cooldownTimeLeft)}</p>
@@ -62,7 +58,6 @@ const EditableDocumentImage = ({ label, imageUrl, onEdit, disabled, cooldownTime
         </div>
     );
 };
-
 const PasswordChangeModal = ({ isOpen, onClose, user }) => {
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -104,7 +99,7 @@ const PasswordChangeModal = ({ isOpen, onClose, user }) => {
     );
 };
 
-// --- COMPONENTE PRINCIPAL DE LA PÁGINA ---
+// --- COMPONENTE PRINCIPAL ---
 export default function ProfilePage() {
     const { user, loading: authLoading, logout } = useAuth();
     const [userData, setUserData] = useState(null);
@@ -126,6 +121,7 @@ export default function ProfilePage() {
         try {
             const docRef = doc(db, 'users', user.uid);
             const docSnap = await getDoc(docRef);
+
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 setUserData(data);
@@ -134,17 +130,38 @@ export default function ProfilePage() {
                     const fiveDaysInMillis = 5 * 24 * 60 * 60 * 1000;
                     const lastUpdateTime = data.documentsLastUpdatedAt.toDate();
                     const timePassed = Date.now() - lastUpdateTime.getTime();
-                    if (timePassed < fiveDaysInMillis) {
-                        setCooldownTimeLeft(fiveDaysInMillis - timePassed);
-                    } else { setCooldownTimeLeft(0); }
+                    setCooldownTimeLeft(timePassed < fiveDaysInMillis ? fiveDaysInMillis - timePassed : 0);
                 }
-            } else { throw new Error('User document not found'); }
-        } catch (error) { Swal.fire('Error', 'No se pudieron cargar tus datos.', 'error'); }
-        finally { setLoading(false); }
-    }, [user]);
+            } else {
+                // ✅ MEJORA: Manejar el caso de un documento no encontrado.
+                // Esto indica un estado inconsistente (auth sí, db no).
+                console.error(`Error Crítico: El usuario ${user.uid} está autenticado pero su documento no existe en Firestore.`);
+                await Swal.fire({
+                    icon: 'error',
+                    title: 'Error de Cuenta',
+                    text: 'No pudimos encontrar los datos de tu perfil. Esto puede ocurrir con cuentas antiguas. Por favor, cierra sesión y regístrate de nuevo.',
+                    confirmButtonText: 'Entendido'
+                });
+                // Forzar el cierre de sesión para resolver el estado inconsistente.
+                logout();
+            }
+        } catch (error) {
+            console.error("Error al cargar los datos del usuario:", error);
+            Swal.fire('Error de Conexión', 'No se pudieron cargar tus datos. Por favor, revisa tu conexión a internet e inténtalo de nuevo.', 'error');
+        } finally {
+            setLoading(false);
+        }
+    }, [user, logout]); // Añadir logout a las dependencias
 
-    useEffect(() => { if (!authLoading) { fetchUserData(); } }, [authLoading, fetchUserData]);
+    useEffect(() => {
+        if (!authLoading && user) {
+            fetchUserData();
+        } else if (!authLoading && !user) {
+            setLoading(false);
+        }
+    }, [authLoading, user, fetchUserData]);
 
+    // ... (El resto de tus funciones: handleFormChange, handleFormSubmit, etc. permanecen igual)
     const handleFormChange = (e) => { setFormData(prev => ({ ...prev, [e.target.name]: e.target.value })); };
 
     const handleFormSubmit = async (e) => {
@@ -199,7 +216,7 @@ export default function ProfilePage() {
     };
 
     const handleLogout = async () => {
-        const result = await Swal.fire({
+        await Swal.fire({
             title: '¿Cerrar sesión?',
             text: "¿Estás seguro de que quieres salir de tu cuenta?",
             icon: 'question',
@@ -208,27 +225,21 @@ export default function ProfilePage() {
             cancelButtonColor: '#3085d6',
             confirmButtonText: 'Sí, cerrar sesión',
             cancelButtonText: 'Cancelar'
-        });
-
-        if (result.isConfirmed) {
-            try {
-                await logout();
-                // La redirección ya la maneja el AuthContext
-            } catch (error) {
-                Swal.fire('Error', 'No se pudo cerrar la sesión. Inténtalo de nuevo.', 'error');
+        }).then((result) => {
+            if (result.isConfirmed) {
+                logout().catch(() => {
+                    Swal.fire('Error', 'No se pudo cerrar la sesión. Inténtalo de nuevo.', 'error');
+                });
             }
-        }
+        });
     };
 
-    // --- BARRERAS DE PROTECCIÓN ---
     if (authLoading || loading) {
         return <div className="flex justify-center items-center h-screen"><Loader className="animate-spin text-blue-500" size={48} /></div>;
     }
 
-    // ¡ESTA ES LA CORRECCIÓN! Si el usuario es null, no intentes renderizar el perfil.
     if (!user || !userData) {
-        // Esto puede ocurrir durante el logout o si los datos no se cargan.
-        // Mostramos un spinner mientras el AuthContext redirige.
+        // Esta barrera se activa durante el logout o si los datos no se cargaron y se forzó el logout.
         return <div className="flex justify-center items-center h-screen"><Loader className="animate-spin text-blue-500" size={48} /></div>;
     }
 

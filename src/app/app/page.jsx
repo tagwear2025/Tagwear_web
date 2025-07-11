@@ -2,10 +2,17 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import Image from 'next/image';
+import { Montserrat } from 'next/font/google';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import ProductGrid from '@/app/components/marketplace/ProductGrid';
 import { Loader, Star, ShoppingBag, Inbox, Search, X, ChevronsUpDown } from 'lucide-react';
+
+const montserrat = Montserrat({ 
+  subsets: ['latin'],
+  weight: ['700'], // Un peso Bold es fuerte pero elegante
+});
 
 export default function MarketplacePage() {
   // --- ESTADOS ---
@@ -22,7 +29,6 @@ export default function MarketplacePage() {
   const categoriasDisponibles = ['Todos', 'Poleras', 'Pantalones', 'Chaquetas', 'Zapatos', 'Accesorios'];
 
   // --- EFECTO DE CARGA DE DATOS ---
-  // Se ejecuta cuando la categoría seleccionada cambia.
   useEffect(() => {
     setLoading(true);
 
@@ -39,25 +45,22 @@ export default function MarketplacePage() {
       const data = snapshot.docs.map(doc => ({ 
           id: doc.id, 
           ...doc.data(),
-          // Aseguramos que el precio sea un número para ordenar correctamente
           precio: Number(doc.data().precio) || 0
       }));
       setAllProducts(data);
       setLoading(false);
     }, (error) => {
-      console.error("Error al obtener productos. Es posible que necesites un índice en Firestore si combinas filtros complejos.", error.message);
+      console.error("Error al obtener productos:", error.message);
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, [selectedCategory]);
 
-  // --- LÓGICA DE FILTRADO, BÚSQUEDA Y ORDENACIÓN EN EL CLIENTE ---
-  // `useMemo` recalcula los productos solo si cambian las dependencias.
+  // --- LÓGICA DE FILTRADO, BÚSQUEDA Y ORDENACIÓN ---
   const processedProducts = useMemo(() => {
     let products = [...allProducts];
 
-    // 1. Filtrado por término de búsqueda
     if (searchTerm) {
       const lowercasedTerm = searchTerm.toLowerCase();
       products = products.filter(product =>
@@ -66,7 +69,6 @@ export default function MarketplacePage() {
       );
     }
     
-    // 2. Ordenación
     switch (sortBy) {
       case 'price-desc':
         products.sort((a, b) => b.precio - a.precio);
@@ -74,7 +76,6 @@ export default function MarketplacePage() {
       case 'price-asc':
         products.sort((a, b) => a.precio - b.precio);
         break;
-      // case 'default': (No se necesita hacer nada, mantiene el orden de Firestore)
       default:
         break;
     }
@@ -82,13 +83,9 @@ export default function MarketplacePage() {
     return products;
   }, [allProducts, searchTerm, sortBy]);
 
-  // --- CORRECCIÓN DEL ERROR ---
-  // `useMemo` para separar los productos en premium y regulares.
-  // El error estaba aquí. Usamos variables internas (premium, regular) y las retornamos
-  // en un objeto cuyas claves coinciden con las que queremos desestructurar.
   const { premiumProducts, regularProducts } = useMemo(() => {
-    const premium = []; // Variable interna
-    const regular = []; // Variable interna
+    const premium = [];
+    const regular = [];
     
     processedProducts.forEach(product => {
       if (product.isPremium) {
@@ -98,7 +95,6 @@ export default function MarketplacePage() {
       }
     });
 
-    // Se retorna un objeto con las claves correctas
     return { premiumProducts: premium, regularProducts: regular };
   }, [processedProducts]);
 
@@ -114,6 +110,21 @@ export default function MarketplacePage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      
+      {/* --- INICIO: SECCIÓN DEL LOGOTIPO PROFESIONAL (IZQUIERDA) --- */}
+      <header className="flex justify-start items-center mb-8">
+          <h1 className={`${montserrat.className} text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100`}>
+            TagWear
+          </h1>
+          <Image 
+            src="/icons/bola8.png" 
+            alt="Logo de TagWear" 
+            width={50} 
+            height={50}
+            className="ml-2"
+          />
+      </header>
+      {/* --- FIN: SECCIÓN DEL LOGOTIPO --- */}
       
       <section className="mb-12">
         {/* --- BARRA DE BÚSQUEDA --- */}

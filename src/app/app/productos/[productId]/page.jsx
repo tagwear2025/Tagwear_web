@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link'; // <--- 1. IMPORTAMOS LINK
 import { db } from '@/lib/firebase';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import Image from 'next/image';
@@ -62,7 +63,7 @@ export default function ProductDetailPage() {
     const productRef = doc(db, 'products', productId);
     const unsubscribe = onSnapshot(productRef, async (productSnap) => {
       if (productSnap.exists()) {
-        const productData = productSnap.data();
+        const productData = { id: productSnap.id, ...productSnap.data() };
         setProduct(productData);
 
         // Obtener al vendedor (esto no necesita ser en tiempo real a menos que cambie)
@@ -72,7 +73,7 @@ export default function ProductDetailPage() {
           if (sellerSnap.exists()) {
             setSeller(sellerSnap.data());
           } else {
-            setSeller({ nombres: productData.vendedorNombre, lugarResidencia: 'Desconocida' });
+            setSeller({ nombres: productData.vendedorNombre || 'Vendedor Anónimo', lugarResidencia: 'Desconocida' });
           }
         }
       } else {
@@ -122,7 +123,6 @@ export default function ProductDetailPage() {
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
                 <div className="flex justify-between items-start">
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{product.nombre}</h1>
-                    {/* AÑADIDO: Badge de estado */}
                     <span className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-full ${isAvailable ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
                         {isAvailable ? <CheckCircle size={14}/> : <XCircle size={14}/>}
                         {isAvailable ? 'Disponible' : 'Vendido'}
@@ -136,7 +136,6 @@ export default function ProductDetailPage() {
                     <span>Categoría: {product.categoria}</span>
                 </div>
                 
-                {/* AÑADIDO: Mostrar Stock */}
                 <div className="flex items-center text-gray-500 dark:text-gray-400 mb-4">
                     <Package size={16} className="mr-2"/>
                     <span>Stock: {product.stock} unidades</span>
@@ -145,7 +144,7 @@ export default function ProductDetailPage() {
                 <div className="space-y-2">
                     <h3 className="font-semibold text-gray-800 dark:text-gray-200">Tallas Disponibles:</h3>
                     <div className="flex flex-wrap gap-2">
-                        {product.tallas.map(talla => (
+                        {product.tallas && product.tallas.map(talla => (
                             <span key={talla} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-sm font-medium rounded-full">{talla}</span>
                         ))}
                     </div>
@@ -157,8 +156,12 @@ export default function ProductDetailPage() {
                 <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{product.descripcion}</p>
             </div>
 
-            {seller && (
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+            {/* --- INICIO DE LA MEJORA --- */}
+            {seller && product.userId && (
+              // 2. ENVOLVEMOS LA TARJETA DEL VENDEDOR CON EL COMPONENTE LINK
+              <Link href={`/app/pages/LupaUsers/viewPerfilUsers/${product.userId}`} className="block">
+                {/* 3. AÑADIMOS CLASES DE HOVER PARA INDICAR QUE ES CLICKEABLE */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer">
                     <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><User size={20}/> Información del Vendedor</h2>
                     <div className="flex items-center gap-4">
                         <img src={seller.photoURL || `https://ui-avatars.com/api/?name=${seller.nombres}`} alt={seller.nombres} className="w-16 h-16 rounded-full object-cover"/>
@@ -168,12 +171,13 @@ export default function ProductDetailPage() {
                         </div>
                     </div>
                 </div>
+              </Link>
             )}
+            {/* --- FIN DE LA MEJORA --- */}
 
-            {/* AÑADIDO: Lógica condicional para el botón */}
             <a href={whatsappLink} target="_blank" rel="noopener noreferrer" 
                className={`w-full flex items-center justify-center gap-3 px-6 py-4 font-bold text-lg rounded-lg transition-transform transform shadow-lg 
-                          ${whatsappLink ? 'bg-green-500 text-white hover:bg-green-600 hover:scale-105' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                           ${whatsappLink ? 'bg-green-500 text-white hover:bg-green-600 hover:scale-105' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                aria-disabled={!whatsappLink}
                onClick={(e) => !whatsappLink && e.preventDefault()}>
                 <MessageSquare />

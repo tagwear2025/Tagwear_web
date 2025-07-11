@@ -16,6 +16,7 @@ export default function ProductCard({ product }) {
       : 'https://placehold.co/500x500/e0e0e0/7f7f7f?text=Imagen+no+disponible';
 
   return (
+    // Esta estructura es correcta. 'break-inside-avoid' evita que la tarjeta se corte.
     <div className="mb-4 break-inside-avoid group cursor-pointer">
       <Link href={`/app/productos/${product.id}`}>
         <div className="relative">
@@ -42,7 +43,6 @@ export default function ProductCard({ product }) {
             <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
               Bs. {product.precio ? product.precio.toFixed(2) : '0.00'}
             </p>
-            {/* AÑADIDO: Mostrar el stock */}
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">
               Stock: {product.stock || 0}
             </span>

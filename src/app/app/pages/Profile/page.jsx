@@ -1,17 +1,22 @@
-// src/app/app/pages/Profile/page.jsx
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+// --- Importaciones ---
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Swal from 'sweetalert2';
 import Link from 'next/link';
-import { User, Calendar, Users, MapPin, Edit, Save, Loader, ShieldCheck, Image as ImageIcon, Lock, Eye, EyeOff, Phone, LogOut } from 'lucide-react';
+// ✅ Se añaden íconos para la nueva sección
+import { User, Calendar, Users, MapPin, Edit, Save, Loader, ShieldCheck, Image as ImageIcon, Lock, Eye, EyeOff, Phone, LogOut, Star, MessageCircle } from 'lucide-react';
 import { db, storage } from '@/lib/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+// ✅ Se añaden funciones de Firestore para leer las calificaciones
+import { doc, getDoc, updateDoc, collection, query, onSnapshot, orderBy } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { updateProfile, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 
-// --- Componentes internos no cambian ---
+
+// --- Componentes internos (sin cambios) ---
 const ProfileInput = ({ id, label, value, onChange, icon, disabled, type = 'text', placeholder = '' }) => (
     <div className="relative">
         <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
@@ -99,6 +104,18 @@ const PasswordChangeModal = ({ isOpen, onClose, user }) => {
     );
 };
 
+// ✅ NUEVO COMPONENTE para mostrar la calificación promedio
+const DisplayRating = ({ rating, count }) => (
+    <div className="flex items-center">
+        {[...Array(5)].map((_, i) => (
+            <Star key={i} size={16} className={`${i < Math.round(rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 dark:text-gray-500'}`} />
+        ))}
+        <span className="ml-2 text-sm font-bold text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
+        {count !== undefined && <span className="ml-1.5 text-sm text-gray-500 dark:text-gray-400">({count} calificaciones)</span>}
+    </div>
+);
+
+
 // --- COMPONENTE PRINCIPAL ---
 export default function ProfilePage() {
     const { user, loading: authLoading, logout } = useAuth();
@@ -108,9 +125,32 @@ export default function ProfilePage() {
     const [editMode, setEditMode] = useState(false);
     const [isPasswordModalOpen, setPasswordModalOpen] = useState(false);
     const [cooldownTimeLeft, setCooldownTimeLeft] = useState(0);
+    
+    // ✅ NUEVO ESTADO para guardar las calificaciones
+    const [ratings, setRatings] = useState([]);
 
     const departamentos = [ 'Beni', 'Cochabamba', 'Chuquisaca', 'La Paz', 'Oruro', 'Pando', 'Potosí', 'Santa Cruz', 'Tarija' ];
     const sexos = ['Masculino', 'Femenino', 'Prefiero no decirlo'];
+
+    // ✅ NUEVO useEffect para escuchar las calificaciones en tiempo real
+    useEffect(() => {
+        if (!user) return;
+
+        const ratingsQuery = query(collection(db, `users/${user.uid}/ratings`), orderBy('createdAt', 'desc'));
+        const unsubscribe = onSnapshot(ratingsQuery, (snapshot) => {
+            const ratingsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setRatings(ratingsData);
+        });
+
+        return () => unsubscribe(); // Limpieza del listener
+    }, [user]);
+
+    // ✅ NUEVO useMemo para calcular la calificación promedio
+    const averageRating = useMemo(() => {
+        if (ratings.length === 0) return 0;
+        return ratings.reduce((acc, curr) => acc + curr.rating, 0) / ratings.length;
+    }, [ratings]);
+
 
     const fetchUserData = useCallback(async () => {
         if (!user) {
@@ -121,7 +161,6 @@ export default function ProfilePage() {
         try {
             const docRef = doc(db, 'users', user.uid);
             const docSnap = await getDoc(docRef);
-
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 setUserData(data);
@@ -133,16 +172,12 @@ export default function ProfilePage() {
                     setCooldownTimeLeft(timePassed < fiveDaysInMillis ? fiveDaysInMillis - timePassed : 0);
                 }
             } else {
-                // ✅ MEJORA: Manejar el caso de un documento no encontrado.
-                // Esto indica un estado inconsistente (auth sí, db no).
                 console.error(`Error Crítico: El usuario ${user.uid} está autenticado pero su documento no existe en Firestore.`);
                 await Swal.fire({
-                    icon: 'error',
-                    title: 'Error de Cuenta',
+                    icon: 'error', title: 'Error de Cuenta',
                     text: 'No pudimos encontrar los datos de tu perfil. Esto puede ocurrir con cuentas antiguas. Por favor, cierra sesión y regístrate de nuevo.',
                     confirmButtonText: 'Entendido'
                 });
-                // Forzar el cierre de sesión para resolver el estado inconsistente.
                 logout();
             }
         } catch (error) {
@@ -151,7 +186,7 @@ export default function ProfilePage() {
         } finally {
             setLoading(false);
         }
-    }, [user, logout]); // Añadir logout a las dependencias
+    }, [user, logout]);
 
     useEffect(() => {
         if (!authLoading && user) {
@@ -161,7 +196,6 @@ export default function ProfilePage() {
         }
     }, [authLoading, user, fetchUserData]);
 
-    // ... (El resto de tus funciones: handleFormChange, handleFormSubmit, etc. permanecen igual)
     const handleFormChange = (e) => { setFormData(prev => ({ ...prev, [e.target.name]: e.target.value })); };
 
     const handleFormSubmit = async (e) => {
@@ -239,7 +273,6 @@ export default function ProfilePage() {
     }
 
     if (!user || !userData) {
-        // Esta barrera se activa durante el logout o si los datos no se cargaron y se forzó el logout.
         return <div className="flex justify-center items-center h-screen"><Loader className="animate-spin text-blue-500" size={48} /></div>;
     }
 
@@ -261,6 +294,37 @@ export default function ProfilePage() {
                         <span>Cerrar Sesión</span>
                     </button>
                 </div>
+                
+                {/* ✅ INICIO DE LA NUEVA SECCIÓN DE CALIFICACIONES */}
+                {userData.isSellerVerified && (
+                    <div id="ratings-section" className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg mb-8 scroll-mt-20">
+                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+                            <h2 className="text-xl font-bold flex items-center gap-3"><MessageCircle /> Mis Calificaciones</h2>
+                            <DisplayRating rating={averageRating} count={ratings.length} />
+                        </div>
+                        <div className="space-y-6 max-h-[400px] overflow-y-auto pr-4">
+                            {ratings.length > 0 ? ratings.map(r => (
+                                <div key={r.id} className="flex items-start gap-4 border-b border-gray-200 dark:border-gray-700 pb-4 last:border-b-0">
+                                    <img src={r.reviewerPhotoURL || `https://ui-avatars.com/api/?name=${r.reviewerName}`} alt={r.reviewerName} className="w-10 h-10 rounded-full" />
+                                    <div className="flex-grow">
+                                        <div className="flex justify-between items-center">
+                                            <p className="font-bold text-gray-900 dark:text-white">{r.reviewerName}</p>
+                                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                {formatDistanceToNow(r.createdAt.toDate(), { addSuffix: true, locale: es })}
+                                            </span>
+                                        </div>
+                                        <DisplayRating rating={r.rating} />
+                                        <p className="mt-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 p-3 rounded-lg whitespace-pre-wrap">{r.comment}</p>
+                                    </div>
+                                </div>
+                            )) : (
+                                <p className="text-center text-gray-500 dark:text-gray-400 py-8">Aún no has recibido ninguna calificación.</p>
+                            )}
+                        </div>
+                    </div>
+                )}
+                {/* ✅ FIN DE LA NUEVA SECCIÓN DE CALIFICACIONES */}
+
 
                 <form onSubmit={handleFormSubmit} className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg">
                     <div className="flex justify-between items-center mb-6">

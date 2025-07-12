@@ -7,7 +7,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { Loader, MapPin, User, Tag, Info, ImageIcon, Package, CheckCircle, XCircle, MessageSquare } from 'lucide-react';
 
-// --- Componente para el carrusel de imágenes (Rediseñado) ---
+// --- Componente para el carrusel de imágenes (Sin cambios) ---
 const ImageCarousel = ({ images, alt }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -46,7 +46,6 @@ const ImageCarousel = ({ images, alt }) => {
 };
 
 export default function ProductDetailPage() {
-    // --- LÓGICA DE ESTADOS Y DATOS (INTACTA) ---
     const params = useParams();
     const { productId } = params;
     const [product, setProduct] = useState(null);
@@ -80,9 +79,8 @@ export default function ProductDetailPage() {
             setLoading(false);
         });
         return () => unsubscribe();
-    }, [productId]);
+    }, [productId, seller]); // Añadido seller a las dependencias
 
-    // --- RENDERIZADO (ESTILOS RENOVADOS) ---
     if (loading) {
         return (
             <div className="flex justify-center items-center min-h-[80vh] bg-[#111]">
@@ -100,6 +98,7 @@ export default function ProductDetailPage() {
     }
     
     const isAvailable = product.estado === 'disponible';
+    const hasOffer = product.precioOferta && parseFloat(product.precioOferta) > 0;
     const whatsappLink = seller?.telefono && isAvailable
         ? `https://wa.me/591${seller.telefono}?text=Hola, me interesa tu producto "${product.nombre}" que vi en Tagwear.`
         : null;
@@ -123,7 +122,15 @@ export default function ProductDetailPage() {
                                 </span>
                             </div>
 
-                            <p className="text-5xl font-extrabold text-orange-400">Bs. {product.precio.toFixed(2)}</p>
+                            {/* ✅ SECCIÓN DE PRECIO ACTUALIZADA */}
+                            {hasOffer ? (
+                                <div className="flex items-baseline gap-3">
+                                    <p className="text-5xl font-extrabold text-orange-400">Bs. {parseFloat(product.precioOferta).toFixed(2)}</p>
+                                    <p className="text-2xl font-bold text-white/50 line-through">Bs. {parseFloat(product.precio).toFixed(2)}</p>
+                                </div>
+                            ) : (
+                                <p className="text-5xl font-extrabold text-orange-400">Bs. {parseFloat(product.precio).toFixed(2)}</p>
+                            )}
                             
                             <div className="flex flex-wrap gap-x-6 gap-y-2 text-white/60 pt-2">
                                 <div className="flex items-center gap-2"><Tag size={16}/><span>{product.categoria}</span></div>

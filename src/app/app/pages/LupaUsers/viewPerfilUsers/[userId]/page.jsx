@@ -10,7 +10,7 @@ import { doc, getDoc, collection, query, where, onSnapshot, addDoc, deleteDoc, s
 import { Loader, Star, Send, Trash2, MessageCircle, ShoppingBag, ShieldCheck, Tag, Phone } from 'lucide-react';
 import Swal from 'sweetalert2';
 
-// --- Componentes Reutilizables (Estilos Renovados) ---
+// --- Componentes Reutilizables (sin cambios) ---
 
 const StarRatingInput = ({ rating, setRating }) => (
     <div className="flex items-center gap-1">
@@ -35,26 +35,42 @@ const DisplayRating = ({ rating, count }) => (
     </div>
 );
 
+// ✅ ProductCard ACTUALIZADO para mostrar ofertas
 const ProductCard = ({ product }) => {
     const imageUrl = product.imageUrls && product.imageUrls.length > 0
         ? product.imageUrls[0]
         : `https://placehold.co/600x400/111/fff?text=No+Imagen`;
+    
+    const hasOffer = product.precioOferta && parseFloat(product.precioOferta) > 0;
 
     return (
         <Link href={`/app/productos/${product.id}`} passHref>
-            <div className="bg-black/40 border border-white/10 rounded-xl overflow-hidden group transform hover:-translate-y-1.5 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/10">
+            <div className="bg-black/40 border border-white/10 rounded-xl overflow-hidden group transform hover:-translate-y-1.5 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/10 h-full flex flex-col">
                 <div className="relative h-56">
                     <img src={imageUrl} alt={product.nombre} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                    <div className="absolute top-0 left-0 bg-black bg-opacity-70 text-white text-xs font-bold px-3 py-1 m-2 rounded-full">
+                    <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white text-xs font-bold px-3 py-1 m-2 rounded-full">
                         {product.categoria}
                     </div>
+                    {/* Etiqueta de OFERTA */}
+                    {hasOffer && (
+                        <div className="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-3 py-1 m-2 rounded-full animate-pulse">
+                            OFERTA
+                        </div>
+                    )}
                 </div>
-                <div className="p-4">
+                <div className="p-4 flex-grow flex flex-col">
                     <h3 className="font-bold text-lg truncate text-white" title={product.nombre}>{product.nombre}</h3>
-                    <p className="text-orange-400 font-semibold text-2xl mt-2 flex items-center gap-2">
-                        <Tag size={20} />
-                        {parseFloat(product.precio).toFixed(2)} Bs.
-                    </p>
+                    <div className="mt-auto pt-2">
+                        {/* Lógica de visualización de precios */}
+                        {hasOffer ? (
+                            <div className="flex items-baseline gap-2">
+                                <p className="text-orange-400 font-semibold text-2xl">Bs. {parseFloat(product.precioOferta).toFixed(2)}</p>
+                                <p className="text-white/50 line-through text-md">Bs. {parseFloat(product.precio).toFixed(2)}</p>
+                            </div>
+                        ) : (
+                            <p className="text-orange-400 font-semibold text-2xl">Bs. {parseFloat(product.precio).toFixed(2)}</p>
+                        )}
+                    </div>
                 </div>
             </div>
         </Link>
@@ -62,9 +78,8 @@ const ProductCard = ({ product }) => {
 };
 
 
-// --- Componente Principal de la Página ---
+// --- Componente Principal de la Página (sin cambios en la lógica) ---
 export default function ViewUserProfilePage() {
-    // --- LÓGICA DE ESTADOS Y DATOS (INTACTA) ---
     const { user: currentUser } = useAuth();
     const { userId } = useParams();
     const [seller, setSeller] = useState(null);
@@ -87,11 +102,14 @@ export default function ViewUserProfilePage() {
                 setSeller(null);
             }
         });
+        
+        // La consulta de productos ya trae todos los campos, incluido precioOferta
         const productsQuery = query(collection(db, 'products'), where('userId', '==', userId));
         const unsubscribeProducts = onSnapshot(productsQuery, (snapshot) => {
             const productList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setProducts(productList);
         });
+
         const ratingsQuery = query(collection(db, `users/${userId}/ratings`), orderBy('createdAt', 'desc'));
         const unsubscribeRatings = onSnapshot(ratingsQuery, (snapshot) => {
             const ratingsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -159,7 +177,6 @@ export default function ViewUserProfilePage() {
         }
     };
 
-    // --- RENDERIZADO (ESTILOS RENOVADOS) ---
     if (loading) {
         return <div className="flex justify-center items-center h-screen bg-[#111]"><Loader className="animate-spin text-orange-500" size={48} /></div>;
     }

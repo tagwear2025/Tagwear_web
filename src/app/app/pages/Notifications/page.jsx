@@ -1,6 +1,6 @@
 'use client';
 
-// --- Importaciones ---
+// --- Importaciones (Lógica Intacta) ---
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
@@ -10,32 +10,32 @@ import { Loader, Star, Bell, Clock } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-// --- Componente para una Notificación Individual ---
+// --- Componente para una Notificación Individual (Estilos Renovados) ---
 const NotificationItem = ({ notification }) => {
-    // Renderiza la notificación de una nueva calificación
+    // Notificación de nueva calificación
     if (notification.type === 'new_rating') {
         const { data } = notification;
         return (
-            // ✅ CAMBIO: El enlace ahora apunta a la página de perfil del usuario actual,
-            // directamente a la nueva sección de calificaciones.
             <Link href={`/app/pages/Profile#ratings-section`} className="block">
-                <div className="flex items-start gap-4 p-4 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg shadow-sm transition-colors duration-200">
+                <div className="flex items-start gap-4 p-4 bg-black/30 border border-white/10 rounded-2xl hover:bg-white/5 transition-colors duration-200">
                     <img 
-                        src={data.reviewerPhotoURL || `https://ui-avatars.com/api/?name=${data.reviewerName}`} 
+                        src={data.reviewerPhotoURL || `https://ui-avatars.com/api/?name=${data.reviewerName}&background=222&color=fff`} 
                         alt={data.reviewerName} 
                         className="w-12 h-12 rounded-full object-cover"
                     />
                     <div className="flex-1">
-                        <p className="text-gray-800 dark:text-gray-200">
-                            <span className="font-bold">{data.reviewerName}</span> te ha dejado una calificación.
+                        <p className="text-white/90">
+                            <span className="font-bold text-white">{data.reviewerName}</span> te ha dejado una calificación.
                         </p>
                         <div className="flex items-center gap-1 my-1">
                             {[...Array(5)].map((_, i) => (
-                                <Star key={i} size={16} className={`${i < data.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 dark:text-gray-500'}`} />
+                                <Star key={i} size={16} className={`${i < data.rating ? 'text-yellow-400 fill-yellow-400' : 'text-white/20'}`} />
                             ))}
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 italic bg-gray-100 dark:bg-gray-700/50 p-2 rounded-md">"{data.comment}"</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        <blockquote className="text-sm text-white/70 italic bg-white/5 border-l-2 border-orange-500 p-2 rounded-md mt-2">
+                            "{data.comment}"
+                        </blockquote>
+                        <p className="text-xs text-white/50 mt-2">
                             {formatDistanceToNow(data.createdAt.toDate(), { addSuffix: true, locale: es })}
                         </p>
                     </div>
@@ -44,26 +44,26 @@ const NotificationItem = ({ notification }) => {
         );
     }
 
-    // Renderiza la notificación de producto premium activo
+    // Notificación de producto premium activo
     if (notification.type === 'premium_active') {
         const { data } = notification;
-        const imageUrl = data.imageUrls?.[0] || 'https://placehold.co/600x400/e2e8f0/64748b?text=No+Imagen';
+        const imageUrl = data.imageUrls?.[0] || `https://placehold.co/600x400/111/fff?text=No+Imagen`;
         return (
             <Link href={`/app/productos/${notification.id}`} className="block">
-                <div className="flex items-start gap-4 p-4 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 rounded-lg shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors duration-200">
+                <div className="flex items-start gap-4 p-4 bg-orange-500/10 border-l-4 border-orange-500 rounded-lg hover:bg-orange-500/20 transition-colors duration-200">
                     <img 
                         src={imageUrl} 
                         alt={data.nombre} 
                         className="w-12 h-12 rounded-md object-cover"
                     />
                     <div className="flex-1">
-                        <p className="font-bold text-blue-800 dark:text-blue-300">¡Tu producto es Premium!</p>
-                        <p className="text-gray-800 dark:text-gray-200">
-                           El producto <span className="font-semibold">{data.nombre}</span> está destacado en la página de inicio.
+                        <p className="font-bold text-orange-400">¡Tu producto es Premium!</p>
+                        <p className="text-white/90">
+                            El producto <span className="font-semibold">{data.nombre}</span> está destacado en la página de inicio.
                         </p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 font-semibold mt-2 flex items-center gap-1">
+                        <p className="text-xs text-white/60 font-semibold mt-2 flex items-center gap-1">
                             <Clock size={14} />
-                            Promoción válida hasta: {format(data.premiumHasta.toDate(), 'dd MMMM yyyy, HH:mm', { locale: es })}
+                            Válido hasta: {format(data.premiumHasta.toDate(), 'dd MMMM yyyy, HH:mm', { locale: es })}
                         </p>
                     </div>
                 </div>
@@ -75,7 +75,7 @@ const NotificationItem = ({ notification }) => {
 };
 
 
-// --- Componente Principal de la Página de Notificaciones (sin cambios) ---
+// --- Componente Principal de la Página de Notificaciones (Lógica Intacta) ---
 export default function NotificationsPage() {
     const { user } = useAuth();
     const [notifications, setNotifications] = useState([]);
@@ -86,7 +86,6 @@ export default function NotificationsPage() {
             setLoading(false);
             return;
         }
-
         setLoading(true);
         let activeListeners = 2;
         const handleLoading = () => {
@@ -95,7 +94,6 @@ export default function NotificationsPage() {
                 setLoading(false);
             }
         };
-
         const ratingsQuery = query(
             collection(db, `users/${user.uid}/ratings`),
             orderBy('createdAt', 'desc')
@@ -116,7 +114,6 @@ export default function NotificationsPage() {
             console.error("Error fetching ratings notifications:", error);
             handleLoading();
         });
-
         const now = Timestamp.now();
         const productsQuery = query(
             collection(db, 'products'),
@@ -140,7 +137,6 @@ export default function NotificationsPage() {
             console.error("Error fetching premium products notifications:", error);
             handleLoading();
         });
-
         return () => {
             unsubscribeRatings();
             unsubscribeProducts();
@@ -156,26 +152,28 @@ export default function NotificationsPage() {
     }, [notifications]);
     
     return (
-        <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 sm:p-8">
+        <div className="min-h-screen bg-[#111] text-white p-4 sm:p-8">
             <div className="max-w-4xl mx-auto">
                 <div className="flex items-center gap-4 mb-8">
-                    <Bell className="text-blue-500" size={32} />
-                    <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
+                    <div className="w-12 h-12 flex items-center justify-center bg-orange-500/20 rounded-full">
+                        <Bell className="text-orange-400" size={28} />
+                    </div>
+                    <h1 className="text-4xl font-bold text-white">
                         Notificaciones
                     </h1>
                 </div>
 
                 {loading && (
                     <div className="flex justify-center items-center py-20">
-                        <Loader className="animate-spin text-blue-500" size={48} />
+                        <Loader className="animate-spin text-orange-500" size={48} />
                     </div>
                 )}
 
                 {!loading && sortedNotifications.length === 0 && (
-                    <div className="text-center py-20 px-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm">
-                         <Bell size={48} className="mx-auto text-gray-400 dark:text-gray-500" />
-                        <p className="mt-4 text-xl font-semibold text-gray-700 dark:text-gray-300">Todo está tranquilo por aquí.</p>
-                        <p className="text-gray-500 dark:text-gray-400 mt-2">No tienes notificaciones nuevas en este momento.</p>
+                    <div className="text-center py-20 px-6 bg-black/30 border border-white/10 rounded-2xl">
+                         <Bell size={48} className="mx-auto text-white/20" />
+                        <p className="mt-4 text-xl font-semibold text-white/80">Todo está tranquilo por aquí</p>
+                        <p className="text-white/50 mt-2">No tienes notificaciones nuevas en este momento.</p>
                     </div>
                 )}
 

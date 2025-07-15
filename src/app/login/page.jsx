@@ -19,10 +19,15 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
+            // 1. Autenticar al usuario con Firebase
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
+            
+            // 2. Obtener el token de ID del usuario
             const idToken = await user.getIdToken(true);
 
+            // 3. ✅ CORRECCIÓN: Se restaura el body en el fetch para que coincida con lo que espera tu API.
+            // Esta es la versión original que sí funcionará con tu backend.
             const response = await fetch('/api/login', {
                 method: 'POST',
                 headers: {
@@ -34,10 +39,12 @@ export default function LoginPage() {
 
             const data = await response.json();
 
+            // Si la respuesta del servidor no es OK (ej. 500), el error será capturado por el catch.
             if (!response.ok) {
                 throw new Error(data.error || 'Error en el servidor durante el login');
             }
 
+            // 4. Notificar al usuario y redirigir
             await Swal.fire({
                 icon: 'success',
                 title: '¡Bienvenido!',
@@ -51,8 +58,10 @@ export default function LoginPage() {
             router.replace(data.role === 'admin' ? '/admin' : '/app');
 
         } catch (err) {
+            // 5. Manejar errores de Firebase o de nuestro propio servidor
             let errorMessage = 'Ocurrió un error inesperado.';
-            if (err.code) {
+            
+            if (err.code) { // Errores específicos de Firebase
                 switch (err.code) {
                     case 'auth/user-not-found':
                     case 'auth/wrong-password':
@@ -62,12 +71,17 @@ export default function LoginPage() {
                     case 'auth/invalid-email':
                         errorMessage = 'El formato del correo es inválido.';
                         break;
+                    case 'auth/too-many-requests':
+                        errorMessage = 'Acceso bloqueado temporalmente. Intenta más tarde.';
+                        break;
                     default:
+                        console.error("Error de Firebase no manejado:", err);
                         errorMessage = 'Error de autenticación. Por favor, intenta de nuevo.';
                 }
-            } else {
+            } else { // Errores de nuestro fetch o servidor
                 errorMessage = err.message;
             }
+
             await Swal.fire({
                 title: 'Error de Inicio de Sesión',
                 text: errorMessage,
@@ -84,6 +98,7 @@ export default function LoginPage() {
         router.push('/register');
     };
 
+    // El resto de tu JSX permanece exactamente igual.
     return (
         <>
             <style jsx global>{`
@@ -114,7 +129,6 @@ export default function LoginPage() {
                     animation: fadeIn 0.8s ease-out forwards;
                 }
                 
-                /* ✅ Animación para el indicador de scroll */
                 @keyframes bounce {
                     0%, 20%, 50%, 80%, 100% {
                         transform: translateY(0);
@@ -189,15 +203,13 @@ export default function LoginPage() {
                             </div>
                         </form>
                         
-                        {/* ✅ Indicador para hacer scroll */}
-                        <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center text-white/50">
+                        <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 flex flex-col items-center text-white/50 opacity-0 md:opacity-100">
                             <span className="text-xs">Descubre más</span>
                             <ChevronDown className="animate-bounce-slow" size={24} />
                         </div>
                     </div>
                 </div>
 
-                {/* ✅ NUEVA SECCIÓN INFORMATIVA */}
                 <div className="w-full max-w-5xl mx-auto px-4 py-20 text-white">
                     <div className="text-center mb-16">
                         <h2 className="font-lobster text-6xl text-white">¿Qué es Tagwear?</h2>

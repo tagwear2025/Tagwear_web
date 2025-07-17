@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db, storage } from '@/lib/firebaseAdmin';
+import { db, storage } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 
 // GET: Obtener datos de un producto específico (útil para la página de edición)

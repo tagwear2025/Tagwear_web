@@ -1,6 +1,6 @@
 // src/app/api/login/route.js
 import { NextResponse } from 'next/server';
-import { auth as adminAuth, db } from '@/lib/firebaseAdmin';
+import { auth as adminAuth, db } from '@/lib/firebase-admin';
 
 export async function POST(request) {
   try {

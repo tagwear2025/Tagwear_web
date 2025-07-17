@@ -1,6 +1,6 @@
 // src/app/api/users/clear-premium/route.js
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebaseAdmin';
+import { db } from '@/lib/firebase-admin';
 
 export async function POST(request) {
   const { userId } = await request.json();

@@ -1,5 +1,5 @@
 // CORRECCIÓN: Se cambió el nombre del import a 'firebaseAdmin'
-import { db } from '@/lib/firebaseAdmin'; 
+import { db } from '@/lib/firebase-admin'; 
 
 function formatDate(field) {
   // Esta función puede dar error si 'field' es null o undefined. La hacemos más segura.

@@ -1,7 +1,7 @@
 // src/app/api/users/update-premium/route.js
 import { NextResponse } from 'next/server';
 // CORRECCIÓN: Tu código usa el SDK de Admin, lo cual es correcto para el backend.
-import { db } from '@/lib/firebaseAdmin'; 
+import { db } from '@/lib/firebase-admin'; 
 // El Admin SDK usa su propio Timestamp, no el del cliente.
 import { FieldValue } from 'firebase-admin/firestore'; 
 

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 // CORRECCIÓN: Se cambió el nombre del import a 'firebaseAdmin'
 // También, tu archivo firebaseAdmin exporta 'auth' y 'db', no un 'admin' genérico.
 // Usaremos 'db' directamente, que es lo correcto según tu configuración.
-import { db } from '@/lib/firebaseAdmin';
+import { db } from '@/lib/firebase-admin';
 
 export async function POST(req) {
   try {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebaseAdmin';
+import { db } from '@/lib/firebase-admin';
 
 // GET: Obtener datos de un usuario específico
 export async function GET(request, { params }) {

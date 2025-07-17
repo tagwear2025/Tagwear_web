@@ -5,13 +5,15 @@ import Link from 'next/link';
 import useSWR from 'swr';
 import { useAuth } from 'src/context/AuthContext';
 import { fetcher } from '@/lib/fetcher';
+import { db } from '@/lib/firebase'; // Importar la instancia de Firestore
+import { collection, query, where, onSnapshot } from 'firebase/firestore'; // Importar funciones de Firestore
 import { 
     Users, 
     UserX, 
-    Gem, 
     QrCode, 
     Mail, 
     Clock,
+    CheckCircle, // Icono para aprobadas
     Sun,
     Cloud,
     CloudSun,
@@ -91,11 +93,44 @@ export default function AdminHomePage() {
   // 1. Fetching de datos de usuarios para estadísticas
   const { data: usersData, isLoading: usersLoading } = useSWR('/api/users', fetcher);
 
-  // 2. Fetching de datos del clima directamente desde el cliente (API sin clave)
+  // 2. Fetching de datos de solicitudes (NUEVO)
+  const [solicitudStats, setSolicitudStats] = useState({ pending: 0, approved: 0 });
+  const [solicitudesLoading, setSolicitudesLoading] = useState(true);
+
+  useEffect(() => {
+    const solicitudesRef = collection(db, 'solicitudesPremium');
+
+    // Listener para solicitudes pendientes
+    const pendingQuery = query(solicitudesRef, where('status', '==', 'pendiente'));
+    const unsubscribePending = onSnapshot(pendingQuery, (snapshot) => {
+      setSolicitudStats(prev => ({ ...prev, pending: snapshot.size }));
+      setSolicitudesLoading(false);
+    }, (error) => {
+      console.error("Error al obtener solicitudes pendientes:", error);
+      setSolicitudesLoading(false);
+    });
+
+    // Listener para solicitudes aprobadas
+    const approvedQuery = query(solicitudesRef, where('status', '==', 'aprobada'));
+    const unsubscribeApproved = onSnapshot(approvedQuery, (snapshot) => {
+      setSolicitudStats(prev => ({ ...prev, approved: snapshot.size }));
+    }, (error) => {
+      console.error("Error al obtener solicitudes aprobadas:", error);
+    });
+
+    // Limpiar listeners al desmontar el componente
+    return () => {
+      unsubscribePending();
+      unsubscribeApproved();
+    };
+  }, []);
+
+
+  // 3. Fetching de datos del clima directamente desde el cliente
   const weatherUrl = 'https://api.open-meteo.com/v1/forecast?latitude=-21.53&longitude=-64.72&current=temperature_2m,weather_code';
   const { data: weatherData, isLoading: weatherLoading } = useSWR(weatherUrl, fetcher);
 
-  // 3. Lógica para el reloj en tiempo real
+  // 4. Lógica para el reloj en tiempo real
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }));
@@ -103,14 +138,13 @@ export default function AdminHomePage() {
     return () => clearInterval(timer);
   }, []);
   
-  // 4. Cálculo de estadísticas cuando los datos de usuarios están disponibles
-  const stats = {
+  // 5. Cálculo de estadísticas de usuarios (se elimina la de premium)
+  const userStats = {
     total: usersData?.length || 0,
     inactive: usersData?.filter(u => !u.active).length || 0,
-    premium: usersData?.filter(u => u.fechaSuscripcion).length || 0
   };
 
-  // 5. Función para interpretar el código del clima y devolver un ícono y descripción
+  // 6. Función para interpretar el código del clima
   const getWeatherDetails = (code) => {
     if (code === 0) return { icon: <Sun size={28}/>, description: "Despejado" };
     if (code === 1) return { icon: <CloudSun size={28}/>, description: "Principalmente despejado" };
@@ -160,11 +194,12 @@ export default function AdminHomePage() {
           </div>
         </div>
 
-        {/* -- Sección de Estadísticas -- */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <StatCard icon={<Users size={32} className="text-blue-500"/>} title="Total de Usuarios" value={stats.total} isLoading={usersLoading} />
-          <StatCard icon={<UserX size={32} className="text-red-500"/>} title="Usuarios Inactivos" value={stats.inactive} isLoading={usersLoading} />
-          <StatCard icon={<Gem size={32} className="text-amber-500"/>} title="Usuarios Premium" value={stats.premium} isLoading={usersLoading} />
+        {/* -- Sección de Estadísticas (ACTUALIZADA) -- */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatCard icon={<Users size={32} className="text-blue-500"/>} title="Total de Usuarios" value={userStats.total} isLoading={usersLoading} />
+          <StatCard icon={<UserX size={32} className="text-red-500"/>} title="Usuarios Inactivos" value={userStats.inactive} isLoading={usersLoading} />
+          <StatCard icon={<Clock size={32} className="text-orange-500"/>} title="Solicitudes Pendientes" value={solicitudStats.pending} isLoading={solicitudesLoading} />
+          <StatCard icon={<CheckCircle size={32} className="text-green-500"/>} title="Solicitudes Aprobadas" value={solicitudStats.approved} isLoading={solicitudesLoading} />
         </div>
 
         {/* -- Sección de Atajos -- */}

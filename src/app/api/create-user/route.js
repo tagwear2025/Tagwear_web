@@ -1,6 +1,6 @@
 // src/app/api/create-user/route.js
 import { NextResponse } from 'next/server'
-import { auth, db } from '@/lib/firebase-admin'
+import { auth, db } from '@/lib/firebaseAdmin'
 
 export async function POST(request) {
   try {

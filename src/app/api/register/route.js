@@ -1,7 +1,7 @@
 // src/app/api/register/route.js
 import { NextResponse } from 'next/server';
 // Usamos la importación de tu archivo original para mantener la consistencia
-import { auth as adminAuth, db as adminDb } from '@/lib/firebase-admin';
+import { auth as adminAuth, db as adminDb } from '@/lib/firebaseAdmin';
 
 export async function POST(request) {
   try {

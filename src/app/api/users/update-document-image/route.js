@@ -1,7 +1,7 @@
 // src/app/api/users/update-document-image/route.js
 import { NextResponse } from 'next/server';
 // Importamos 'db' y 'storage' de tu archivo de configuración de administrador
-import { db, storage } from '@/lib/firebase-admin'; 
+import { db, storage } from '@/lib/firebaseAdmin'; 
 import { FieldValue } from 'firebase-admin/firestore';
 
 // --- ¡NUEVO! Función para borrar la imagen anterior de forma segura ---

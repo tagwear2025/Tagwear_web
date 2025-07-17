@@ -1,6 +1,6 @@
 // src/app/api/users/delete/route.js
 import { NextResponse } from 'next/server';
-import { db, auth, storage } from '@/lib/firebaseAdmin';
+import { db, auth, storage } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 
 export async function POST(request) {

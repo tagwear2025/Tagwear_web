@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db, storage } from '@/lib/firebaseAdmin'; // Usamos la configuración de Admin
+import { db, storage } from '@/lib/firebase-admin';// Usamos la configuración de Admin
 import { FieldValue } from 'firebase-admin/firestore';
 
 // Límite de productos por usuario

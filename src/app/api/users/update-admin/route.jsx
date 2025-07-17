@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { admin } from '@/lib/firebaseAdmin'; // Asegúrate que tu firebaseAdmin está configurado
+import { admin } from '@/lib/firebase-admin';// Asegúrate que tu firebaseAdmin está configurado
 
 export async function POST(request) {
     try {

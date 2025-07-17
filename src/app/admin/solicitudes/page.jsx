@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { collection, onSnapshot, query, where, doc, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
+// ✅ CORRECCIÓN: Se añade 'deleteDoc' a la lista de importaciones.
+import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Swal from 'sweetalert2';
 import { useTheme } from '@/context/ThemeContext';

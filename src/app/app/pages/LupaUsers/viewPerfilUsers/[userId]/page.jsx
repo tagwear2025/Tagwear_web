@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, query, where, onSnapshot, addDoc, deleteDoc, serverTimestamp, orderBy } from 'firebase/firestore';
-import { Loader, Star, Send, Trash2, MessageCircle, ShoppingBag, ShieldCheck, Tag, Phone } from 'lucide-react';
+import { Loader, Star, Send, Trash2, MessageCircle, ShoppingBag, ShieldCheck, Tag, Phone, ChevronDown, ChevronUp } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 // --- Componentes Reutilizables (sin cambios) ---
@@ -35,7 +35,6 @@ const DisplayRating = ({ rating, count }) => (
     </div>
 );
 
-// ✅ ProductCard ACTUALIZADO para mostrar ofertas
 const ProductCard = ({ product }) => {
     const imageUrl = product.imageUrls && product.imageUrls.length > 0
         ? product.imageUrls[0]
@@ -78,7 +77,7 @@ const ProductCard = ({ product }) => {
 };
 
 
-// --- Componente Principal de la Página (sin cambios en la lógica) ---
+// --- Componente Principal de la Página ---
 export default function ViewUserProfilePage() {
     const { user: currentUser } = useAuth();
     const { userId } = useParams();
@@ -89,6 +88,9 @@ export default function ViewUserProfilePage() {
     const [newComment, setNewComment] = useState('');
     const [newRating, setNewRating] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // ✅ NUEVO ESTADO: Para controlar la visibilidad de los comentarios
+    const [showAllComments, setShowAllComments] = useState(false);
 
     useEffect(() => {
         if (!userId) return;
@@ -103,7 +105,6 @@ export default function ViewUserProfilePage() {
             }
         });
         
-        // La consulta de productos ya trae todos los campos, incluido precioOferta
         const productsQuery = query(collection(db, 'products'), where('userId', '==', userId));
         const unsubscribeProducts = onSnapshot(productsQuery, (snapshot) => {
             const productList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -132,6 +133,14 @@ export default function ViewUserProfilePage() {
         if (!currentUser) return true;
         return ratings.some(r => r.reviewerId === currentUser.uid);
     }, [ratings, currentUser]);
+    
+    // ✅ Lógica para mostrar comentarios
+    const visibleRatings = useMemo(() => {
+        if (showAllComments || ratings.length <= 3) {
+            return ratings;
+        }
+        return ratings.slice(0, 3);
+    }, [ratings, showAllComments]);
 
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
@@ -211,22 +220,11 @@ export default function ViewUserProfilePage() {
                     )}
                 </div>
 
-                {/* Grid principal */}
+                {/* ✅ Grid principal MODIFICADO para reordenar en móvil */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2">
-                        <h2 className="text-3xl font-bold mb-6 flex items-center gap-3 text-white"><ShoppingBag className="text-orange-400"/> Productos del Vendedor</h2>
-                        {products.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                                {products.map(product => <ProductCard key={product.id} product={product} />)}
-                            </div>
-                        ) : (
-                            <div className="text-center py-16 px-6 bg-black/30 border border-white/10 rounded-2xl">
-                                <p className="text-white/50 text-lg">Este vendedor aún no tiene productos publicados.</p>
-                            </div>
-                        )}
-                    </div>
 
-                    <div className="lg:sticky top-8 self-start">
+                    {/* ✅ Sección de Calificaciones (Ahora se muestra primero en móvil) */}
+                    <div className="lg:col-span-1 lg:sticky top-8 self-start order-1 lg:order-2">
                         <h2 className="text-3xl font-bold mb-6 flex items-center gap-3 text-white"><MessageCircle className="text-orange-400" /> Calificaciones</h2>
                         <div className="bg-black/30 backdrop-blur-lg border border-white/10 p-6 rounded-2xl shadow-lg">
                             {currentUser && currentUser.uid !== userId && !hasUserCommented && (
@@ -241,7 +239,7 @@ export default function ViewUserProfilePage() {
                                 </form>
                             )}
                             <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
-                                {ratings.length > 0 ? ratings.map(r => (
+                                {visibleRatings.length > 0 ? visibleRatings.map(r => (
                                     <div key={r.id} className="flex items-start gap-4">
                                         <img src={r.reviewerPhotoURL || `https://ui-avatars.com/api/?name=${r.reviewerName}&background=222&color=fff`} alt={r.reviewerName} className="w-10 h-10 rounded-full" />
                                         <div className="flex-grow">
@@ -259,8 +257,33 @@ export default function ViewUserProfilePage() {
                                     </div>
                                 )) : <p className="text-center text-white/50 py-8">Este vendedor aún no tiene calificaciones.</p>}
                             </div>
+                            {/* ✅ Botones para mostrar más/menos comentarios */}
+                            {ratings.length > 3 && (
+                                <div className="mt-6 pt-4 border-t border-white/10">
+                                    <button onClick={() => setShowAllComments(!showAllComments)} className="w-full flex items-center justify-center gap-2 text-orange-400 hover:text-orange-300 font-semibold transition-colors">
+                                        {showAllComments ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                        {showAllComments ? 'Mostrar menos comentarios' : `Mostrar los ${ratings.length - 3} comentarios restantes`}
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
+
+                    {/* ✅ Sección de Productos (Ahora se muestra segundo en móvil) */}
+                    <div className="lg:col-span-2 order-2 lg:order-1">
+                        <h2 className="text-3xl font-bold mb-6 flex items-center gap-3 text-white"><ShoppingBag className="text-orange-400"/> Productos del Vendedor</h2>
+                        {products.length > 0 ? (
+                            // ✅ Grid MODIFICADO para 2 columnas en móvil
+                            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
+                                {products.map(product => <ProductCard key={product.id} product={product} />)}
+                            </div>
+                        ) : (
+                            <div className="text-center py-16 px-6 bg-black/30 border border-white/10 rounded-2xl">
+                                <p className="text-white/50 text-lg">Este vendedor aún no tiene productos publicados.</p>
+                            </div>
+                        )}
+                    </div>
+
                 </div>
             </div>
         </div>

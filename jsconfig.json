@@ -3,12 +3,13 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/lib/*": ["src/lib/*"], // ¡Esta es la línea corregida!
+      "@/lib/*": ["src/lib/*"],
       "@/components/*": ["src/components/*"],
       "@/context/*": ["src/context/*"],
-      "@/app/*": ["src/app/*"]
+      "@/app/*": ["src/app/*"],
+      "@/data/*": ["src/data/*"]  // ✅ Agregar esta línea
     },
-    "jsx": "preserve" // Asegúrate de que esta línea también esté si usas JSX
+    "jsx": "preserve"
   },
   "include": [
     "next-env.d.ts",

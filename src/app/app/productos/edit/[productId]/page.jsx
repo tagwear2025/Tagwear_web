@@ -8,7 +8,7 @@ import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { toast, Toaster } from 'react-hot-toast';
 import { Loader2, Save, ArrowLeft, Tag, Trash2, ImageIcon } from 'lucide-react';
 import ImageUploader from '@/app/components/productos/ImageUploader'; // Importar el ImageUploader
-import ComboBox from '@/app/components/ui/ComboBox'; // Importar ComboBox
+import ComboBox from '@/app/components/ui/ComboBox'; // Ruta correcta
 
 // Importar todas las constantes de datos de producto para consistencia
 import {
@@ -357,12 +357,12 @@ export default function EditProductoPage() {
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Marca *</label>
                                     <ComboBox
                                         // Asegúrate de que las opciones se mapeen a { value: item, label: item }
-                                        options={marcasDisponibles.map(brand => ({ value: brand, label: brand }))}
-                                        value={formData.marca}
-                                        onChange={(val) => setFormData(prev => ({ ...prev, marca: val }))}
-                                        placeholder={!formData.categoriaPrincipal ? "Selecciona una categoría primero" : "Busca o escribe una marca..."}
-                                        disabled={!formData.categoriaPrincipal}
-                                    />
+                                            options={marcasDisponibles}  // ComboBox espera un array de strings, no objetos
+                                            value={formData.marca}
+                                            onChange={(val) => setFormData(prev => ({ ...prev, marca: val }))}
+                                            placeholder={!formData.categoriaPrincipal ? "Selecciona una categoría primero" : "Busca o escribe una marca..."}
+                                            disabled={!formData.categoriaPrincipal}
+                                        />
                                 </div>
                                 <div className="md:col-span-2">
                                     <label htmlFor="condicion" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Condición del Artículo *</label>

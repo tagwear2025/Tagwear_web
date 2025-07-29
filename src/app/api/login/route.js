@@ -1,6 +1,7 @@
 // src/app/api/login/route.js
+
 import { NextResponse } from 'next/server';
-import { auth as adminAuth, db } from '@/lib/firebase-admin';
+import { adminAuth, db } from '@/lib/firebase-admin'; // ✅ Cambio aquí: usar adminAuth directamente
 
 export async function POST(request) {
   try {
@@ -8,6 +9,12 @@ export async function POST(request) {
 
     if (!token) {
       return NextResponse.json({ error: 'Token no proporcionado' }, { status: 400 });
+    }
+
+    // ✅ Verificar que adminAuth esté disponible antes de usarlo
+    if (!adminAuth) {
+      console.error('❌ adminAuth no está inicializado');
+      return NextResponse.json({ error: 'Error de configuración del servidor' }, { status: 500 });
     }
 
     const decodedToken = await adminAuth.verifyIdToken(token, true);
@@ -22,7 +29,7 @@ export async function POST(request) {
     if (email === adminEmail) {
       console.log(`Login detectado para Admin: ${email}`);
       role = 'admin';
-      
+     
       if (decodedToken.role === 'admin') {
         console.log("Custom claim 'admin' verificado para el admin.");
       } else {
@@ -31,7 +38,7 @@ export async function POST(request) {
     } else {
       // Lógica para usuarios normales
       console.log(`Login detectado para Usuario Normal: ${email}`);
-      
+     
       const userDocRef = db.collection('users').doc(uid);
       const userDocSnap = await userDocRef.get();
 
@@ -45,8 +52,8 @@ export async function POST(request) {
       // Verificar si el usuario está activo
       if (userData.active !== true) {
         console.log(`Intento de login bloqueado para usuario inactivo: ${email} (UID: ${uid})`);
-        return NextResponse.json({ 
-          error: 'Tu cuenta está inactiva. Contacta al administrador para habilitarla.' 
+        return NextResponse.json({
+          error: 'Tu cuenta está inactiva. Contacta al administrador para habilitarla.'
         }, { status: 403 });
       }
 
@@ -84,7 +91,7 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Error en /api/login:', error);
-    
+   
     let errorMessage = 'Error interno del servidor.';
     let status = 500;
 

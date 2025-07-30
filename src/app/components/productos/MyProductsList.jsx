@@ -1,3 +1,4 @@
+// src/app/components/productos/MyProductsList.jsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,7 +10,7 @@ import { Star, Edit, Trash2, Loader, Inbox } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Swal from 'sweetalert2';
 
-// Componente Switch para marcar como vendido
+// Componente Switch para marcar como vendido (sin cambios)
 const StatusToggle = ({ isAvailable, onChange }) => (
     <button onClick={onChange} className={`relative inline-flex items-center h-7 rounded-full w-28 transition-colors ${isAvailable ? 'bg-green-500' : 'bg-gray-400'}`}>
         <span className={`absolute left-1 top-1/2 -translate-y-1/2 w-20 text-xs font-bold text-white transition-transform duration-300 ${isAvailable ? 'translate-x-0' : 'translate-x-6'}`}>
@@ -25,18 +26,20 @@ export default function MyProductsList({ user }) {
     const router = useRouter();
 
     useEffect(() => {
-        if (!user?.uid) return;
+        if (!user?.uid) {
+            setLoading(false); // Detener la carga si no hay usuario
+            return;
+        }
 
-        // ✅ CORRECCIÓN: Se elimina el orderBy de la consulta para evitar el error de índice.
         const q = query(collection(db, 'products'), where('userId', '==', user.uid));
         
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const userProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-            // ✅ CORRECCIÓN: La ordenación se hace aquí, en el cliente, después de recibir los datos.
+            // Ordenación del lado del cliente para evitar errores de índice en Firestore
             userProducts.sort((a, b) => {
-                const dateA = a.createdAt?.toDate() || 0;
-                const dateB = b.createdAt?.toDate() || 0;
+                const dateA = a.fechaCreacion?.toDate() || 0; // Usar fechaCreacion
+                const dateB = b.fechaCreacion?.toDate() || 0;
                 return dateB - dateA; // Ordena de más nuevo a más antiguo
             });
 
@@ -44,12 +47,13 @@ export default function MyProductsList({ user }) {
             setLoading(false);
         }, (error) => {
             toast.error("No se pudieron cargar tus productos.");
-            console.error(error);
+            console.error("Error con onSnapshot:", error);
             setLoading(false);
         });
         return () => unsubscribe();
     }, [user]);
 
+    // Función sin cambios
     const handleToggleStatus = async (product) => {
         const newStatus = product.estado === 'disponible' ? 'vendido' : 'disponible';
         const productRef = doc(db, 'products', product.id);
@@ -61,6 +65,7 @@ export default function MyProductsList({ user }) {
         }
     };
     
+    // Función sin cambios
     const handleRequestPremium = async (product) => {
         if (product.isPremium) {
             toast.error('Este producto ya es premium.');
@@ -87,7 +92,7 @@ export default function MyProductsList({ user }) {
                     cancelButtonText: 'Más tarde'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        window.location.href = '/app/pages/Profile';
+                        router.push('/app/pages/Profile');
                     }
                 });
                 return;
@@ -151,6 +156,7 @@ export default function MyProductsList({ user }) {
         }
     };
     
+    // --- ✅ FUNCIÓN DE ELIMINACIÓN CORREGIDA ---
     const handleDeleteProduct = async (product) => {
         const result = await Swal.fire({
             title: '¿Estás seguro?',
@@ -166,13 +172,36 @@ export default function MyProductsList({ user }) {
         if (result.isConfirmed) {
             const loadingToast = toast.loading('Eliminando producto...');
             try {
+                // 1. Verificar que el usuario esté autenticado
+                if (!user) {
+                    throw new Error("Debes iniciar sesión para eliminar productos.");
+                }
+
+                // 2. Obtener el token de autenticación del usuario actual
+                const token = await user.getIdToken(true); // true fuerza la actualización del token
+
+                // 3. Realizar la solicitud a la API, incluyendo el token en el encabezado
                 const response = await fetch(`/api/productos/${product.id}`, {
                     method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
                 });
-                if (!response.ok) throw new Error('Error en el servidor al eliminar.');
+
+                // 4. Manejar la respuesta de la API
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    // Lanza un error para ser capturado por el bloque catch
+                    throw new Error(errorData.error || `Error ${response.status}: No se pudo eliminar.`);
+                }
+                
+                // 5. Si la eliminación fue exitosa, mostrar mensaje de éxito.
+                // onSnapshot se encargará de actualizar la UI automáticamente.
                 toast.success('Producto eliminado con éxito.', { id: loadingToast });
+
             } catch (error) {
-                toast.error('No se pudo eliminar el producto.', { id: loadingToast });
+                console.error('Error al eliminar el producto:', error);
+                toast.error(error.message || 'No se pudo eliminar el producto.', { id: loadingToast });
             }
         }
     };

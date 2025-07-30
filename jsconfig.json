@@ -1,13 +1,8 @@
-// jsconfig.json
 {
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/lib/*": ["src/lib/*"],
-      "@/components/*": ["src/components/*"],
-      "@/context/*": ["src/context/*"],
-      "@/app/*": ["src/app/*"],
-      "@/data/*": ["src/data/*"]  // ✅ Agregar esta línea
+      "@/*": ["src/*"]
     },
     "jsx": "preserve"
   },

@@ -14,7 +14,7 @@ import {
     electronicBrands,
     genders,
     conditions
-} from '@/data/productData.js';  // Agregar .js
+} from '@/data/productData';  
 
 export default function MarketplacePage() {
     // --- ESTADOS PRINCIPALES ---

@@ -21,7 +21,7 @@ import {
     conditions,
     materials,
     standardSizes
-} from '@/data/productData.js';
+} from '@/data/productData';
 
 export default function EditProductoPage() {
     const { user } = useAuth(); // Asegúrate de que useAuth() provea el objeto 'user'

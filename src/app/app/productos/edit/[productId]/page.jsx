@@ -45,7 +45,7 @@ export default function EditProductoPage() {
         material: '',
         otroMaterial: '', // Para "Otro" material
         otrosDetalles: '',
-        stock: 1,
+        stock: '1',
         tallas: [], // Para tallas estándar
     });
 
@@ -75,6 +75,28 @@ export default function EditProductoPage() {
             setMarcasDisponibles([]);
         }
     }, [formData.categoriaPrincipal, isElectronicProduct]);
+
+    // --- MANEJADOR PARA EL STOCK ---
+    const handleStockChange = (e) => {
+        const value = e.target.value;
+        // Permitir campo vacío temporalmente para mejor UX
+        if (value === '') {
+            setFormData(prev => ({ ...prev, stock: '' }));
+            return;
+        }
+        // Solo permitir números enteros positivos
+        const numValue = parseInt(value, 10);
+        if (!isNaN(numValue) && numValue >= 1) {
+            setFormData(prev => ({ ...prev, stock: value }));
+        }
+    };
+
+    const handleStockBlur = () => {
+        // Si el campo está vacío al perder el foco, establecer valor mínimo
+        if (formData.stock === '' || parseInt(formData.stock, 10) < 1) {
+            setFormData(prev => ({ ...prev, stock: '1' }));
+        }
+    };
 
     // --- Cargar datos del producto al inicio ---
     const fetchProductData = useCallback(async () => {
@@ -132,7 +154,7 @@ export default function EditProductoPage() {
                     material: productData.material || '',
                     otroMaterial: productData.material && !materials.includes(productData.material) ? productData.material : '',
                     otrosDetalles: productData.otrosDetalles || '',
-                    stock: productData.stock || 1,
+                    stock: String(productData.stock || 1),
                     tallas: isCustomTallaSaved ? [] : savedTallas,
                 });
                 setExistingImageUrls(productData.imageUrls || []);
@@ -192,10 +214,11 @@ export default function EditProductoPage() {
         const trimmedPrecio = String(formData.precio).trim();
         const trimmedPrecioOferta = String(formData.precioOferta).trim();
 
+        const stockNum = parseInt(formData.stock, 10);
         const commonFieldsValid = trimmedNombre && trimmedDescripcion && trimmedPrecio &&
                                     formData.categoriaPrincipal && formData.subcategoria &&
                                     formData.marca && formData.condicion &&
-                                    formData.stock >= 1;
+                                    stockNum >= 1;
 
         const finalEstilo = formData.estilo === 'Otro' ? formData.otroEstilo.trim() : formData.estilo;
         const finalMaterial = formData.material === 'Otro' ? formData.otroMaterial.trim() : formData.material;
@@ -249,8 +272,9 @@ export default function EditProductoPage() {
                 nombre: trimmedNombre,
                 descripcion: trimmedDescripcion,
                 precio: parseFloat(trimmedPrecio),
-                precioOferta: trimmedPrecioOferta ? parseFloat(trimmedPrecioOferta) : null,
-                stock: parseInt(formData.stock, 10),
+                // MEJORA: Si precioOferta está vacío o es 0, se establece como null para removerlo
+                precioOferta: trimmedPrecioOferta && parseFloat(trimmedPrecioOferta) > 0 ? parseFloat(trimmedPrecioOferta) : null,
+                stock: stockNum,
                 estilo: finalEstilo,
                 material: finalMaterial,
                 tallas: tallaType === 'standard' ? formData.tallas : [customTalla.trim()],
@@ -261,10 +285,16 @@ export default function EditProductoPage() {
             };
 
             for (const key in productDataForApi) {
-                if (productDataForApi[key] === '' || productDataForApi[key] === null || productDataForApi[key] === undefined) {
+                if (productDataForApi[key] === '' || productDataForApi[key] === undefined) {
                     delete productDataForApi[key];
                 }
             }
+            
+            // MEJORA: Manejar explícitamente el caso cuando precioOferta se debe eliminar
+            if (productDataForApi.precioOferta === null) {
+                productDataForApi.precioOferta = null; // Mantener null explícitamente para eliminar del backend
+            }
+            
             if (!isElectronicProduct && (!productDataForApi.tallas || productDataForApi.tallas.length === 0)) {
                 toast.error('Debes especificar al menos una talla para productos de ropa.');
                 setIsSubmitting(false);
@@ -455,7 +485,19 @@ export default function EditProductoPage() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div>
                                     <label htmlFor="stock" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cantidad en Stock *</label>
-                                    <input type="number" id="stock" name="stock" value={formData.stock} onChange={handleFormChange} className="w-full p-3 bg-gray-100 dark:bg-gray-700 rounded-lg focus:ring-blue-500 focus:border-blue-500" min="1" required />
+                                    <input 
+                                        type="text" 
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
+                                        id="stock" 
+                                        name="stock"
+                                        value={formData.stock} 
+                                        onChange={handleStockChange}
+                                        onBlur={handleStockBlur}
+                                        className="w-full p-3 bg-gray-100 dark:bg-gray-700 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-center font-medium" 
+                                        placeholder="1"
+                                        required 
+                                    />
                                 </div>
                                 <div>
                                     <label htmlFor="precio" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio (en Bs.) *</label>

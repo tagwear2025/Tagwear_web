@@ -38,7 +38,7 @@ export default function NuevoProductoPage() {
     const [genero, setGenero] = useState('');
     const [condicion, setCondicion] = useState('');
     const [otrosDetalles, setOtrosDetalles] = useState('');
-    const [stock, setStock] = useState(1);
+    const [stock, setStock] = useState('1');
     const [files, setFiles] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -79,6 +79,28 @@ export default function NuevoProductoPage() {
         }
     }, [categoriaPrincipal, isElectronicProduct]);
 
+    // --- MANEJADOR PARA EL STOCK ---
+    const handleStockChange = (e) => {
+        const value = e.target.value;
+        // Permitir campo vacío temporalmente para mejor UX
+        if (value === '') {
+            setStock('');
+            return;
+        }
+        // Solo permitir números enteros positivos
+        const numValue = parseInt(value, 10);
+        if (!isNaN(numValue) && numValue >= 1) {
+            setStock(value);
+        }
+    };
+
+    const handleStockBlur = () => {
+        // Si el campo está vacío al perder el foco, establecer valor mínimo
+        if (stock === '' || parseInt(stock, 10) < 1) {
+            setStock('1');
+        }
+    };
+
     // --- MANEJADORES ---
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -90,7 +112,8 @@ export default function NuevoProductoPage() {
         const trimmedPrecio = precio.trim();
         const trimmedPrecioOferta = precioOferta.trim();
 
-        const commonFieldsValid = trimmedNombre && trimmedDescripcion && trimmedPrecio && categoriaPrincipal && subcategoria && marca && condicion && files.length > 0 && stock >= 1;
+        const stockNum = parseInt(stock, 10);
+        const commonFieldsValid = trimmedNombre && trimmedDescripcion && trimmedPrecio && categoriaPrincipal && subcategoria && marca && condicion && files.length > 0 && stockNum >= 1;
 
         // Valida campos de "Otro" si fueron seleccionados
         const customFieldsAreValid =
@@ -136,7 +159,7 @@ export default function NuevoProductoPage() {
         formData.append('subcategoria', subcategoria);
         formData.append('condicion', condicion);
         if (otrosDetalles.trim()) formData.append('otrosDetalles', otrosDetalles.trim()); // Trim and conditionally append
-        formData.append('stock', stock);
+        formData.append('stock', stockNum);
         formData.append('userId', user.uid);
         formData.append('vendedorNombre', user.displayName || user.email);
 
@@ -315,7 +338,18 @@ export default function NuevoProductoPage() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
                                 <label htmlFor="stock" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cantidad en Stock *</label>
-                                <input type="number" id="stock" value={stock} onChange={(e) => setStock(Math.max(1, parseInt(e.target.value, 10) || 1))} className="w-full p-3 bg-gray-100 dark:bg-gray-700 rounded-lg" min="1" />
+                                <input 
+                                    type="text" 
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    id="stock" 
+                                    value={stock} 
+                                    onChange={handleStockChange}
+                                    onBlur={handleStockBlur}
+                                    className="w-full p-3 bg-gray-100 dark:bg-gray-700 rounded-lg text-center font-medium" 
+                                    placeholder="1"
+                                    required 
+                                />
                             </div>
                             <div>
                                 <label htmlFor="precio" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precio (en Bs.) *</label>

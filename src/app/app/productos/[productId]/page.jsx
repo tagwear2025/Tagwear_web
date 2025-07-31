@@ -18,7 +18,7 @@ import {
     Star,
     Shield,
     Palette,
-    Fabric,
+    Fabric, // CORRECCIÓN: Se añade 'Fabric' a la lista de importaciones.
     Users,
     Zap,
     Calendar,
@@ -80,7 +80,7 @@ const ImageCarousel = ({ images, alt }) => {
 
 // --- Componente para mostrar badges de información ---
 const InfoBadge = ({ icon: Icon, label, value, color = "blue" }) => {
-    if (!value) return null;
+    if (!value || !Icon) return null;
     
     const colorClasses = {
         blue: "bg-blue-500/20 text-blue-300 border-blue-500/30",
@@ -202,7 +202,7 @@ export default function ProductDetailPage() {
                 .scrollbar-thin {
                     scrollbar-width: thin;
                 }
-                .scrollbar-thumb-white\/20::-webkit-scrollbar-thumb {
+                .scrollbar-thumb-white\\/20::-webkit-scrollbar-thumb {
                     background-color: rgba(255, 255, 255, 0.2);
                     border-radius: 9999px;
                 }

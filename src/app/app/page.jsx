@@ -6,14 +6,15 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import ProductGrid from '@/app/components/marketplace/ProductGrid';
 import { Loader, Star, ShoppingBag, Inbox, Search, X, SlidersHorizontal, Filter, ChevronDown, ChevronUp } from 'lucide-react';
 
-// Importar datos de productos para los filtros
+// Importar datos de productos para los filtros RUTA RELATIVA
+// ✅ CORRECTO - debe ser:
 import {
     categories,
     clothingBrands,
     electronicBrands,
     genders,
     conditions
-} from '@/data/productData';
+} from '@/data/productData.js';  // Agregar .js
 
 export default function MarketplacePage() {
     // --- ESTADOS PRINCIPALES ---

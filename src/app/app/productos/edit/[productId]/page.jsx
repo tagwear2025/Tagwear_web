@@ -8,7 +8,8 @@ import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { toast, Toaster } from 'react-hot-toast';
 import { Loader2, Save, ArrowLeft, Tag, Trash2, ImageIcon } from 'lucide-react';
 import ImageUploader from '@/app/components/productos/ImageUploader'; // Importar el ImageUploader
-import ComboBox from '@/app/components/ui/ComboBox'; // Ruta correcta
+// ✅ CORRECTO - debe ser:
+import ComboBox from '@/components/ui/ComboBox';  // Sin /app/
 
 // Importar todas las constantes de datos de producto para consistencia
 import {
@@ -20,7 +21,7 @@ import {
     conditions,
     materials,
     standardSizes
-} from '@/data/productData';
+} from '@/data/productData.js';
 
 export default function EditProductoPage() {
     const { user } = useAuth(); // Asegúrate de que useAuth() provea el objeto 'user'

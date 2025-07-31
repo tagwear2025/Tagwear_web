@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import ImageUploader from '@/app/components/productos/ImageUploader';
-import ComboBox from '@/app/components/ui/ComboBox';
+import ComboBox from '@/components/ui/ComboBox';
 import { toast, Toaster } from 'react-hot-toast';
 import { Loader2, Upload, Tag } from 'lucide-react';
 
@@ -17,7 +17,7 @@ import {
     conditions,
     materials,
     standardSizes
-} from '@/data/productData';
+} from '@/data/productData.js';
 
 export default function NuevoProductoPage() {
     const { user } = useAuth();

@@ -2,9 +2,13 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
-    },
-    "jsx": "preserve"
+      "@/*": ["./src/*"],
+      "@/components/*": ["./src/app/components/*"],
+      "@/data/*": ["./src/data/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/context/*": ["./src/context/*"],
+      "@/app/*": ["./src/app/*"]
+    }
   },
   "include": [
     "next-env.d.ts",

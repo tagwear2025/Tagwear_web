@@ -7,7 +7,6 @@ import Swal from 'sweetalert2';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast, Toaster } from 'react-hot-toast';
-// AÑADIDO: Eye para el nuevo botón de ver perfil. QUITADO: Star.
 import { Pencil, Trash2, XCircle, UserPlus, Eye } from 'lucide-react';
 
 function StatusToggle({ isChecked, onChange, disabled }) {
@@ -31,17 +30,19 @@ export default function GestionUsuariosClient() {
       setFilteredUsers(users.filter(user =>
           (user.nombres?.toLowerCase() || '').includes(term) ||
           (user.apellidos?.toLowerCase() || '').includes(term) ||
-          (user.email?.toLowerCase() || '').includes(term)
+          (user.email?.toLowerCase() || '').includes(term) ||
+          // ✅ Se añade el filtro por departamento
+          (user.lugarResidencia?.toLowerCase() || '').includes(term)
       ));
     }
   }, [searchTerm, users]);
 
   const handleToggleStatus = async (user) => {
     const originalStatus = user.active;
-    // Optimistic UI: Actualiza la UI inmediatamente
+    // Optimistic UI
     mutate(
       users.map(u => u.id === user.id ? { ...u, active: !originalStatus } : u),
-      false // no revalidar inmediatamente
+      false
     );
 
     const promise = fetch('/api/toggle-status', {
@@ -54,7 +55,7 @@ export default function GestionUsuariosClient() {
       loading: 'Actualizando estado...',
       success: `Estado de ${user.nombres} actualizado.`,
       error: (err) => {
-        // Si hay un error, revierte la UI al estado original
+        // Revertir en caso de error
         mutate(
           users.map(u => u.id === user.id ? { ...u, active: originalStatus } : u),
           false
@@ -64,33 +65,55 @@ export default function GestionUsuariosClient() {
     });
   };
 
-  const handleDeleteUser = async (user) => {
-    const result = await Swal.fire({
-      title: '¿Estás seguro?',
-      text: `Esta acción eliminará a ${user.nombres} ${user.apellidos} permanentemente. ¡No se puede deshacer!`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Sí, ¡eliminar!',
-      cancelButtonText: 'Cancelar'
-    });
+ const handleDeleteUser = async (user) => {
+  const result = await Swal.fire({
+    title: '¿Estás seguro?',
+    text: `Esta acción eliminará a ${user.nombres} ${user.apellidos} permanentemente. ¡No se puede deshacer!`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    confirmButtonText: 'Sí, ¡eliminar!',
+    cancelButtonText: 'Cancelar'
+  });
 
-    if (result.isConfirmed) {
-      try {
-        await fetch('/api/users/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id }),
-        });
-        Swal.fire('Eliminado', 'El usuario ha sido eliminado.', 'success');
-        mutate();
-      } catch (err) {
-        Swal.fire('Error', 'No se pudo eliminar el usuario.', 'error');
+  if (result.isConfirmed) {
+    try {
+      console.log('🗑️ Iniciando eliminación de usuario:', user.id);
+      
+      const response = await fetch('/api/users/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id }),
+      });
+
+      console.log('📡 Respuesta del servidor:', response.status, response.statusText);
+
+      if (!response.ok) {
+        // Intentar leer el error del servidor
+        let errorMessage = `Error del servidor: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          console.error('❌ Detalles del error:', errorData);
+          errorMessage = errorData.error || errorData.details || errorMessage;
+        } catch (parseError) {
+          console.error('❌ No se pudo parsear la respuesta de error:', parseError);
+        }
+        throw new Error(errorMessage);
       }
-    }
-  };
 
+      const data = await response.json();
+      console.log('✅ Usuario eliminado exitosamente:', data);
+      
+      Swal.fire('Eliminado', 'El usuario ha sido eliminado.', 'success');
+      mutate();
+      
+    } catch (err) {
+      console.error('💥 Error completo:', err);
+      Swal.fire('Error', `No se pudo eliminar el usuario: ${err.message}`, 'error');
+    }
+  }
+};
   const handleClearPremium = async (user) => {
     const result = await Swal.fire({
       title: 'Quitar Premium',
@@ -133,7 +156,8 @@ export default function GestionUsuariosClient() {
       
       <input
         type="text"
-        placeholder="Buscar por nombre, apellido o correo..."
+        // ✅ Se actualiza el placeholder
+        placeholder="Buscar por nombre, apellido, correo o departamento..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         className="w-full mb-6 p-3 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -146,7 +170,8 @@ export default function GestionUsuariosClient() {
               <th scope="col" className="px-6 py-3">Nombre</th>
               <th scope="col" className="px-6 py-3">Email</th>
               <th scope="col" className="px-6 py-3 text-center">Estado</th>
-              <th scope="col" className="px-6 py-3">Premium</th>
+              {/* ✅ Se cambia el encabezado de la columna */}
+              <th scope="col" className="px-6 py-3">Departamento</th>
               <th scope="col" className="px-6 py-3 text-center">Acciones</th>
             </tr>
           </thead>
@@ -158,12 +183,12 @@ export default function GestionUsuariosClient() {
                 <td className="px-6 py-4 text-center">
                   <StatusToggle isChecked={user.active} onChange={() => handleToggleStatus(user)} />
                 </td>
+                {/* ✅ Se cambia el contenido de la celda para mostrar el departamento */}
                 <td className="px-6 py-4">
-                  {user.fechaSuscripcion ? `${user.fechaSuscripcion} - ${user.fechaVencimiento}` : 'No'}
+                  {user.lugarResidencia || 'No especificado'}
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex justify-center items-center gap-2">
-                    {/* --- BOTÓN AÑADIDO --- */}
                     <button onClick={() => router.push(`/admin/users/view/${user.id}`)} title="Ver Perfil" className="p-2 text-green-500 hover:text-green-400 rounded-full hover:bg-gray-700 transition">
                       <Eye size={18} />
                     </button>
@@ -187,7 +212,6 @@ export default function GestionUsuariosClient() {
         </table>
       </div>
 
-      {/* Componente para mostrar las notificaciones toast */}
       <Toaster position="bottom-right" />
     </div>
   );

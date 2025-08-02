@@ -2,12 +2,12 @@
 
 // --- Importaciones (sin cambios en la lógica) ---
 import { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation'; // Importar useRouter
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, onSnapshot, addDoc, deleteDoc, serverTimestamp, orderBy } from 'firebase/firestore';
-import { Loader, Star, Send, Trash2, MessageCircle, ShoppingBag, ShieldCheck, Tag, Phone, ChevronDown, ChevronUp } from 'lucide-react';
+import { doc, onSnapshot, collection, query, where, orderBy, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { Loader, Star, Send, Trash2, MessageCircle, ShoppingBag, ShieldCheck, Tag, Phone, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 // --- Componentes Reutilizables (sin cambios) ---
@@ -50,7 +50,6 @@ const ProductCard = ({ product }) => {
                     <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white text-xs font-bold px-3 py-1 m-2 rounded-full">
                         {product.categoria}
                     </div>
-                    {/* Etiqueta de OFERTA */}
                     {hasOffer && (
                         <div className="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-3 py-1 m-2 rounded-full animate-pulse">
                             OFERTA
@@ -60,7 +59,6 @@ const ProductCard = ({ product }) => {
                 <div className="p-4 flex-grow flex flex-col">
                     <h3 className="font-bold text-lg truncate text-white" title={product.nombre}>{product.nombre}</h3>
                     <div className="mt-auto pt-2">
-                        {/* Lógica de visualización de precios */}
                         {hasOffer ? (
                             <div className="flex items-baseline gap-2">
                                 <p className="text-orange-400 font-semibold text-2xl">Bs. {parseFloat(product.precioOferta).toFixed(2)}</p>
@@ -81,6 +79,7 @@ const ProductCard = ({ product }) => {
 export default function ViewUserProfilePage() {
     const { user: currentUser } = useAuth();
     const { userId } = useParams();
+    const router = useRouter(); // Hook para la navegación
     const [seller, setSeller] = useState(null);
     const [products, setProducts] = useState([]);
     const [ratings, setRatings] = useState([]);
@@ -88,19 +87,21 @@ export default function ViewUserProfilePage() {
     const [newComment, setNewComment] = useState('');
     const [newRating, setNewRating] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
-    // ✅ NUEVO ESTADO: Para controlar la visibilidad de los comentarios
     const [showAllComments, setShowAllComments] = useState(false);
 
     useEffect(() => {
         if (!userId) return;
+
         setLoading(true);
         const sellerRef = doc(db, 'users', userId);
+
         const unsubscribeSeller = onSnapshot(sellerRef, (docSnap) => {
             if (docSnap.exists()) {
                 setSeller({ id: docSnap.id, ...docSnap.data() });
             } else {
-                console.error("Vendedor no encontrado");
+                // ✅ CORRECCIÓN: Se elimina el console.error.
+                // Esto es un estado esperado si el usuario es borrado mientras se ve el perfil.
+                // La UI ya maneja este caso al poner el 'seller' en null.
                 setSeller(null);
             }
         });
@@ -115,8 +116,9 @@ export default function ViewUserProfilePage() {
         const unsubscribeRatings = onSnapshot(ratingsQuery, (snapshot) => {
             const ratingsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setRatings(ratingsData);
-            setLoading(false);
+            setLoading(false); // Mover setLoading aquí para asegurar que todo cargue
         });
+
         return () => {
             unsubscribeSeller();
             unsubscribeProducts();
@@ -134,7 +136,6 @@ export default function ViewUserProfilePage() {
         return ratings.some(r => r.reviewerId === currentUser.uid);
     }, [ratings, currentUser]);
     
-    // ✅ Lógica para mostrar comentarios
     const visibleRatings = useMemo(() => {
         if (showAllComments || ratings.length <= 3) {
             return ratings;
@@ -190,7 +191,19 @@ export default function ViewUserProfilePage() {
         return <div className="flex justify-center items-center h-screen bg-[#111]"><Loader className="animate-spin text-orange-500" size={48} /></div>;
     }
     if (!seller) {
-        return <div className="text-center mt-20 text-2xl font-bold text-white/80">Vendedor no encontrado.</div>;
+        return (
+            <div className="flex flex-col justify-center items-center h-screen bg-[#111] text-center px-4">
+                <h1 className="text-3xl font-bold text-white/80 mb-4">Vendedor no encontrado</h1>
+                <p className="text-white/60 mb-8">Este perfil de usuario ya no existe o fue eliminado.</p>
+                <button 
+                    onClick={() => router.back()} 
+                    className="flex items-center gap-2 px-6 py-3 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-500 transition-colors"
+                >
+                    <ArrowLeft size={18} />
+                    Volver atrás
+                </button>
+            </div>
+        );
     }
 
     return (
@@ -220,10 +233,8 @@ export default function ViewUserProfilePage() {
                     )}
                 </div>
 
-                {/* ✅ Grid principal MODIFICADO para reordenar en móvil */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-                    {/* ✅ Sección de Calificaciones (Ahora se muestra primero en móvil) */}
+                    {/* Sección de Calificaciones */}
                     <div className="lg:col-span-1 lg:sticky top-8 self-start order-1 lg:order-2">
                         <h2 className="text-3xl font-bold mb-6 flex items-center gap-3 text-white"><MessageCircle className="text-orange-400" /> Calificaciones</h2>
                         <div className="bg-black/30 backdrop-blur-lg border border-white/10 p-6 rounded-2xl shadow-lg">
@@ -257,7 +268,6 @@ export default function ViewUserProfilePage() {
                                     </div>
                                 )) : <p className="text-center text-white/50 py-8">Este vendedor aún no tiene calificaciones.</p>}
                             </div>
-                            {/* ✅ Botones para mostrar más/menos comentarios */}
                             {ratings.length > 3 && (
                                 <div className="mt-6 pt-4 border-t border-white/10">
                                     <button onClick={() => setShowAllComments(!showAllComments)} className="w-full flex items-center justify-center gap-2 text-orange-400 hover:text-orange-300 font-semibold transition-colors">
@@ -269,11 +279,10 @@ export default function ViewUserProfilePage() {
                         </div>
                     </div>
 
-                    {/* ✅ Sección de Productos (Ahora se muestra segundo en móvil) */}
+                    {/* Sección de Productos */}
                     <div className="lg:col-span-2 order-2 lg:order-1">
                         <h2 className="text-3xl font-bold mb-6 flex items-center gap-3 text-white"><ShoppingBag className="text-orange-400"/> Productos del Vendedor</h2>
                         {products.length > 0 ? (
-                            // ✅ Grid MODIFICADO para 2 columnas en móvil
                             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
                                 {products.map(product => <ProductCard key={product.id} product={product} />)}
                             </div>
@@ -283,7 +292,6 @@ export default function ViewUserProfilePage() {
                             </div>
                         )}
                     </div>
-
                 </div>
             </div>
         </div>

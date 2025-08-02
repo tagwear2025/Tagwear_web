@@ -1,7 +1,7 @@
 // src/app/api/login/route.js
 
 import { NextResponse } from 'next/server';
-import { adminAuth, db } from '@/lib/firebase-admin'; // ✅ Cambio aquí: usar adminAuth directamente
+import { auth, db } from '@/lib/firebase-admin'; // ✅ ÚNICO CAMBIO: usar 'auth' en lugar de 'adminAuth'
 
 export async function POST(request) {
   try {
@@ -11,13 +11,13 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Token no proporcionado' }, { status: 400 });
     }
 
-    // ✅ Verificar que adminAuth esté disponible antes de usarlo
-    if (!adminAuth) {
-      console.error('❌ adminAuth no está inicializado');
+    // ✅ Cambiar adminAuth por auth
+    if (!auth) {
+      console.error('❌ auth no está inicializado');
       return NextResponse.json({ error: 'Error de configuración del servidor' }, { status: 500 });
     }
 
-    const decodedToken = await adminAuth.verifyIdToken(token, true);
+    const decodedToken = await auth.verifyIdToken(token, true); // ✅ Cambiar adminAuth por auth
     const uid = decodedToken.uid;
     const email = decodedToken.email;
     const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@admin.com';
@@ -76,7 +76,7 @@ export async function POST(request) {
       name: 'role',
       value: role,
       httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.NODE_ENV === 'production',        
       path: '/',
       maxAge: 60 * 60 * 24 * 7, // 7 días
       sameSite: 'Strict',

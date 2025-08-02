@@ -6,7 +6,7 @@ import path from 'path';
 let app;
 let db;
 let storage;
-let adminAuth;
+let auth; // ✅ Cambiado de adminAuth a auth para consistencia
 
 // Configuración del service account
 let serviceAccount;
@@ -19,12 +19,12 @@ try {
     console.log('✅ Service account cargado desde archivo local');
 } catch (err) {
     console.log('📄 Archivo serviceAccountKey.json no encontrado, usando variables de entorno');
-
+    
     // Fallback a variables de entorno (para producción en Vercel)
     const privateKey = process.env.FIREBASE_PRIVATE_KEY;
     const projectId = process.env.FIREBASE_PROJECT_ID;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-
+    
     // Validar que todas las variables estén presentes
     if (!privateKey || !projectId || !clientEmail) {
         console.error('❌ Variables de entorno faltantes:');
@@ -33,7 +33,7 @@ try {
         console.error('FIREBASE_CLIENT_EMAIL:', clientEmail ? 'Presente' : 'Faltante');
         throw new Error('❌ Faltan variables de entorno requeridas para Firebase Admin SDK');
     }
-
+    
     serviceAccount = {
         type: "service_account",
         project_id: projectId,
@@ -66,17 +66,17 @@ try {
         app = admin.app();
         console.log('✅ Firebase Admin ya estaba inicializado, usando instancia existente');
     }
-
+    
     // Inicializar los servicios después de confirmar que app está disponible
     db = admin.firestore(app);
     storage = admin.storage(app);
-    adminAuth = admin.auth(app);
-
+    auth = admin.auth(app); // ✅ Cambiado de adminAuth a auth
+    
     console.log('✅ Servicios de Firebase inicializados:');
     console.log('- Firestore:', db ? 'OK' : 'ERROR');
     console.log('- Storage:', storage ? 'OK' : 'ERROR');
-    console.log('- Auth:', adminAuth ? 'OK' : 'ERROR');
-
+    console.log('- Auth:', auth ? 'OK' : 'ERROR');
+    
 } catch (error) {
     console.error('❌ Error al inicializar Firebase Admin:', error);
     console.error('Detalles del error:', error.message);
@@ -84,14 +84,15 @@ try {
     // En caso de error, asegurar que las variables no queden undefined
     db = null;
     storage = null;
-    adminAuth = null;
+    auth = null; // ✅ Cambiado de adminAuth a auth
     
     throw error;
 }
 
 // ✅ Verificación adicional antes de exportar
-if (!adminAuth) {
-    console.error('❌ CRÍTICO: adminAuth no se inicializó correctamente');
+if (!auth) {
+    console.error('❌ CRÍTICO: auth no se inicializó correctamente');
 }
 
-export { db, storage, adminAuth, admin };
+// ✅ Exportar con nombres consistentes
+export { db, storage, auth, admin };
